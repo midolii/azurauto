@@ -1,0 +1,92 @@
+# =========================
+# Dependencies
+# =========================
+node_modules
+.pnp
+.pnp.js
+
+# =========================
+# Builds
+# =========================
+dist
+dist-ssr
+out
+build
+.next
+.turbo
+
+# Electron
+apps/**/dist
+apps/**/out
+apps/**/.vite
+apps/**/electron-dist
+apps/**/release
+
+# TanStack Start / Vite
+apps/**/.output
+apps/**/.nitro
+apps/**/.vercel
+
+# =========================
+# Logs
+# =========================
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Environment
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# IDE
+# =========================
+.vscode
+.idea
+
+# =========================
+# TypeScript
+# =========================
+*.tsbuildinfo
+
+# =========================
+# Electron runtime
+# =========================
+apps/**/electron-cache
+apps/**/chromium-cache
+
+# =========================
+# Rust (native modules)
+# =========================
+native/**/target
+native/**/Cargo.lock
+
+# =========================
+# ADB / tooling artifacts
+# =========================
+adb-logs
+screenshots
+captures
+
+# =========================
+# shadcn / UI generator
+# =========================
+components/ui/_generated
+
+# =========================
+# misc
+# =========================
+tmp
+temp
+.cache

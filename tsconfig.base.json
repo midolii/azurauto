@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+
+    "strict": true,
+    "skipLibCheck": true,
+
+    "noEmit": true,
+    "isolatedModules": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@azurauto/adb": ["packages/adb/src"],
+      "@azurauto/shared": ["packages/shared/src"],
+      "@azurauto/automation": ["packages/automation/src"],
+    },
+
+    "types": ["node"],
+  },
+}

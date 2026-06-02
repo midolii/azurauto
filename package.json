@@ -1,0 +1,15 @@
+{
+  "name": "azurauto",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "pnpm --filter desktop dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "author": "midolii",
+  "packageManager": "pnpm@11.5.0",
+  "devDependencies": {
+    "@types/node": "^22.19.19"
+  }
+}
