@@ -33,5 +33,9 @@ export function useEnvironmentBootstrap() {
 		}
 	}
 
-	return { status, isRetrying, retryBootstrap };
+	return {
+		status,
+		isRetrying,
+		retryBootstrap,
+	};
 }

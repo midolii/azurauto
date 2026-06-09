@@ -1,4 +1,6 @@
+import { execFile } from "node:child_process";
 import type { Readable } from "node:stream";
+import { promisify } from "node:util";
 import * as AdbKit from "@devicefarmer/adbkit";
 import type Client from "@devicefarmer/adbkit/dist/src/adb/client";
 import type DeviceClient from "@devicefarmer/adbkit/dist/src/adb/DeviceClient";
@@ -22,6 +24,7 @@ export type AdbErrorCode =
 	| "ADB_NOT_AVAILABLE"
 	| "ADB_TIMEOUT"
 	| "ADB_DEVICE_UNAVAILABLE"
+	| "ADB_SERVER_FAILED"
 	| "ADB_COMMAND_FAILED";
 
 export class AdbError extends Error {
@@ -41,6 +44,12 @@ export type AdbClientOptions = {
 	host?: string;
 	port?: number;
 	timeoutMs?: number;
+};
+
+export type ListDevicesWithRecoveryOptions = {
+	onRecoveryStart?: () => void;
+	recoveryDelayMs?: number;
+	resetServerBeforeCheck?: boolean;
 };
 
 type AdbKitDevice = {
@@ -71,6 +80,8 @@ type AdbKitRuntime = {
 };
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+const DEFAULT_RECOVERY_DELAY_MS = 1_500;
+const execFileAsync = promisify(execFile);
 
 const adbKitRuntime = resolveAdbKitRuntime();
 
@@ -83,9 +94,15 @@ const adbKitRuntime = resolveAdbKitRuntime();
  */
 export class AdbClient {
 	private readonly adapter: AdbAdapter;
+	private readonly bin?: string;
+	private readonly host?: string;
+	private readonly port?: number;
 	private readonly timeoutMs: number;
 
 	constructor(options: AdbClientOptions & { adapter?: AdbAdapter } = {}) {
+		this.bin = options.bin;
+		this.host = options.host;
+		this.port = options.port;
 		this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 		this.adapter =
 			options.adapter ??
@@ -109,6 +126,68 @@ export class AdbClient {
 			state: normalizeDeviceState(device.type),
 			rawState: device.type,
 		}));
+	}
+
+	async listDevicesWithRecovery(
+		options: ListDevicesWithRecoveryOptions = {},
+	): Promise<AdbDevice[]> {
+		const shouldRecover = (error: unknown, devices: AdbDevice[]) =>
+			devices.length === 0 ||
+			(error instanceof AdbError && error.code === "ADB_TIMEOUT");
+
+		let devices: AdbDevice[] = [];
+		if (options.resetServerBeforeCheck) {
+			options.onRecoveryStart?.();
+			await this.restartServer();
+			await sleep(options.recoveryDelayMs ?? DEFAULT_RECOVERY_DELAY_MS);
+			devices = await this.listDevices();
+			if (!shouldRecover(undefined, devices)) {
+				return devices;
+			}
+		}
+
+		try {
+			devices = await this.listDevices();
+			if (!shouldRecover(undefined, devices)) {
+				return devices;
+			}
+		} catch (error) {
+			if (!shouldRecover(error, devices)) {
+				throw error;
+			}
+		}
+
+		options.onRecoveryStart?.();
+		await this.startServer();
+		await sleep(options.recoveryDelayMs ?? DEFAULT_RECOVERY_DELAY_MS);
+
+		try {
+			devices = await this.listDevices();
+			if (!shouldRecover(undefined, devices)) {
+				return devices;
+			}
+		} catch (error) {
+			if (!shouldRecover(error, devices)) {
+				throw error;
+			}
+		}
+
+		await this.restartServer();
+		await sleep(options.recoveryDelayMs ?? DEFAULT_RECOVERY_DELAY_MS);
+		return this.listDevices();
+	}
+
+	async startServer(): Promise<void> {
+		await this.runAdbServerCommand("start-server");
+	}
+
+	async killServer(): Promise<void> {
+		await this.runAdbServerCommand("kill-server");
+	}
+
+	async restartServer(): Promise<void> {
+		await this.killServer();
+		await this.startServer();
 	}
 
 	async shell(serial: string, command: string): Promise<AdbCommandResult> {
@@ -240,6 +319,20 @@ export class AdbClient {
 		}
 	}
 
+	private async runAdbServerCommand(command: "kill-server" | "start-server") {
+		const args = [
+			...(this.host ? ["-H", this.host] : []),
+			...(this.port ? ["-P", String(this.port)] : []),
+			command,
+		];
+
+		await this.runWithErrorMapping(
+			() => execFileAsync(this.bin ?? "adb", args),
+			"ADB_SERVER_FAILED",
+			`ADB ${command} failed.`,
+		);
+	}
+
 	private async withTimeout<T>(
 		promise: Promise<T>,
 		message: string,
@@ -261,6 +354,10 @@ export class AdbClient {
 			}
 		}
 	}
+}
+
+function sleep(ms: number) {
+	return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 export function normalizeDeviceState(rawState: string): AdbDeviceState {

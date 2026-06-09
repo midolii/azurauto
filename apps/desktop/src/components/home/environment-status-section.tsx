@@ -56,6 +56,11 @@ export function EnvironmentStatusSection({
 					下一步：{status.nextAction}
 				</div>
 			) : null}
+
+			<div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-cyan-100/80 text-xs">
+				AzurAuto 会使用专用 ADB server 端口自动恢复连接，不会重启系统默认 ADB
+				服务。
+			</div>
 		</section>
 	);
 }

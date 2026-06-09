@@ -4,6 +4,7 @@ import { AdbClient, type AdbDevice, AdbError } from "@azurauto/adb";
 export type BootstrapPhase =
 	| "idle"
 	| "checking-adb"
+	| "adb-recovering"
 	| "no-adb"
 	| "no-device"
 	| "checking-atx"
@@ -13,6 +14,8 @@ export type BootstrapPhase =
 
 export type BootstrapErrorCode =
 	| "ADB_NOT_AVAILABLE"
+	| "ADB_TIMEOUT"
+	| "ADB_SERVER_FAILED"
 	| "NO_DEVICE"
 	| "DEVICE_UNAUTHORIZED"
 	| "DEVICE_OFFLINE"
@@ -43,6 +46,8 @@ export type ScreenshotSource = {
 		mimeType: ScreenshotFrame["mimeType"];
 		data: Buffer;
 	}>;
+	shutdown?(serial?: string): Promise<void>;
+	dispose?(): Promise<void>;
 };
 
 export type AtxInstallStrategy = {
@@ -128,6 +133,25 @@ export class DeviceBootstrapService {
 		};
 	}
 
+	async shutdown() {
+		const serial = this.status.serial;
+		try {
+			await (this.screenshotSource.shutdown?.(serial) ?? this.screenshotSource.dispose?.());
+		} catch {
+			// swallow cleanup errors
+		}
+
+		try {
+			await this.adb.killServer?.();
+		} catch {
+			// swallow cleanup errors
+		}
+	}
+
+	dispose() {
+		return this.shutdown();
+	}
+
 	async run() {
 		// 防止用户连续点击“重试”导致多个安装流程同时写入同一台设备。
 		if (this.running) {
@@ -147,7 +171,26 @@ export class DeviceBootstrapService {
 				createStatus("checking-adb", "正在检查 ADB 和已连接的模拟器。", false),
 			);
 
-			const devices = await this.adb.listDevices();
+			const adb = this.adb as AdbClient & {
+				listDevicesWithRecovery?: (options?: {
+					onRecoveryStart?: () => void;
+					resetServerBeforeCheck?: boolean;
+				}) => Promise<AdbDevice[]>;
+			};
+			const devices = adb.listDevicesWithRecovery
+				? await adb.listDevicesWithRecovery({
+						resetServerBeforeCheck: true,
+						onRecoveryStart: () => {
+							this.setStatus(
+								createStatus(
+									"adb-recovering",
+									"正在重启 AzurAuto 专用 ADB 服务后重新检查设备。",
+									false,
+								),
+							);
+						},
+					})
+				: await adb.listDevices();
 			const device = selectTargetDevice(devices);
 
 			this.setStatus(
@@ -227,8 +270,10 @@ export type Uiautomator2ScreenshotSourceOptions = {
 };
 
 export class Uiautomator2ScreenshotSource implements ScreenshotSource {
+	private static readonly deviceJarPath = "/data/local/tmp/u2.jar";
+	private static readonly deviceLogPath = "/data/local/tmp/azurauto-u2.log";
 	private readonly jsonRpcPort: number;
-	private readonly localPort: number;
+	private localPort: number;
 	private readonly jarPath?: string;
 	private readonly requestTimeoutMs: number;
 	private forwardedSerial?: string;
@@ -257,44 +302,90 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 		};
 	}
 
+	async shutdown(serial?: string) {
+		const targetSerial = serial ?? this.forwardedSerial;
+		if (!targetSerial) return;
+		try {
+			await this.stopJsonRpcServer(targetSerial);
+		} catch {
+			// swallow cleanup errors
+		}
+	}
+
+	dispose() {
+		return this.shutdown();
+	}
+
 	private async ensureJsonRpcServer(serial: string) {
 		if (this.forwardedSerial === serial) {
 			try {
-				await this.requestJsonRpc("deviceInfo", {});
+				await this.pingJsonRpc();
 				return;
 			} catch {
 				this.forwardedSerial = undefined;
 			}
 		}
 
-		await this.adb.forward(
-			serial,
-			`tcp:${this.localPort}`,
-			`tcp:${this.jsonRpcPort}`,
-		);
+		for (let offset = 0; offset < 10; offset += 1) {
+			const localPort = this.localPort + offset;
+
+			try {
+				await this.adb.forward(
+					serial,
+					`tcp:${localPort}`,
+					`tcp:${this.jsonRpcPort}`,
+				);
+				this.forwardedSerial = serial;
+				this.localPort = localPort;
+				break;
+			} catch {
+				if (offset === 9) {
+					throw new DeviceBootstrapError(
+						"UNKNOWN",
+						"uiautomator2 端口转发失败，请检查本地端口是否被占用。",
+						true,
+					);
+				}
+			}
+		}
 
 		if (!(await this.canConnectJsonRpc())) {
 			await this.startJsonRpcServer(serial);
 			await this.waitForJsonRpc();
 		}
-
-		this.forwardedSerial = serial;
 	}
 
 	private async startJsonRpcServer(serial: string) {
+		await this.stopJsonRpcServer(serial);
 		await this.ensureUiautomator2Jar(serial);
 
 		// 设备端 u2.jar 准备完成后，启动 JSON-RPC server。
 		await this.adb.shell(
 			serial,
-			"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main >/dev/null 2>&1 &",
+			`rm -f ${Uiautomator2ScreenshotSource.deviceLogPath}; CLASSPATH=${Uiautomator2ScreenshotSource.deviceJarPath} app_process / com.wetest.uia2.Main >${Uiautomator2ScreenshotSource.deviceLogPath} 2>&1 &`,
+		);
+	}
+
+	private async stopJsonRpcServer(serial: string) {
+		await this.adb.shell(
+			serial,
+			"for pid in $(pidof app_process 2>/dev/null); do tr '\\0' ' ' < /proc/$pid/cmdline | grep -q 'com.wetest.uia2.Main' && kill $pid; done >/dev/null 2>&1 || true",
 		);
 	}
 
 	private async ensureUiautomator2Jar(serial: string) {
+		if (this.jarPath && existsSync(this.jarPath)) {
+			await this.adb.pushFile(
+				serial,
+				this.jarPath,
+				Uiautomator2ScreenshotSource.deviceJarPath,
+			);
+			return;
+		}
+
 		const result = await this.adb.shell(
 			serial,
-			"test -f /data/local/tmp/u2.jar && echo present || echo missing",
+			`test -f ${Uiautomator2ScreenshotSource.deviceJarPath} && echo present || echo missing`,
 		);
 		if (result.stdout.trim() === "present") {
 			return;
@@ -312,10 +403,11 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	}
 
 	private async waitForJsonRpc() {
-		for (let attempt = 0; attempt < 20; attempt += 1) {
+		for (let attempt = 0; attempt < 50; attempt += 1) {
 			try {
-				await this.requestJsonRpc("deviceInfo", {});
-				return;
+				if (await this.pingJsonRpc()) {
+					return;
+				}
 			} catch {
 				await new Promise((resolve) => setTimeout(resolve, 200));
 			}
@@ -323,17 +415,30 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 
 		throw new DeviceBootstrapError(
 			"UNKNOWN",
-			"uiautomator2 JSON-RPC 服务启动失败，请确认应用资源中的 u2.jar 可用。",
+			"uiautomator2 JSON-RPC 服务启动失败，请确认应用资源中的 u2.jar 可用，并查看设备端 /data/local/tmp/azurauto-u2.log。",
 			true,
 		);
 	}
 
 	private async canConnectJsonRpc() {
 		try {
-			await this.requestJsonRpc("deviceInfo", {});
-			return true;
+			return await this.pingJsonRpc();
 		} catch {
 			return false;
+		}
+	}
+
+	private async pingJsonRpc() {
+		const controller = new AbortController();
+		const timer = setTimeout(() => controller.abort(), this.requestTimeoutMs);
+
+		try {
+			const response = await fetch(`http://127.0.0.1:${this.localPort}/ping`, {
+				signal: controller.signal,
+			});
+			return response.ok && (await response.text()) === "pong";
+		} finally {
+			clearTimeout(timer);
 		}
 	}
 
@@ -447,6 +552,20 @@ function toFailureStatus(error: unknown) {
 				nextAction: "安装或配置 ADB 后点击重试。",
 			},
 		);
+	}
+
+	if (error instanceof AdbError && error.code === "ADB_TIMEOUT") {
+		return createStatus("failed", "ADB 响应超时，请重启模拟器或 ADB 服务后重试。", true, {
+			errorCode: "ADB_TIMEOUT",
+			nextAction: "可先点击重新检查；如果仍无设备，再点击重启 ADB 服务。",
+		});
+	}
+
+	if (error instanceof AdbError && error.code === "ADB_SERVER_FAILED") {
+		return createStatus("failed", "ADB 服务启动或重启失败。", true, {
+			errorCode: "ADB_SERVER_FAILED",
+			nextAction: "确认 adb 可执行文件可用，且没有其他工具阻塞 ADB 服务。",
+		});
 	}
 
 	return createStatus("failed", "环境检查失败，请查看日志后重试。", true, {

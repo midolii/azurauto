@@ -21,11 +21,10 @@ pnpm --filter desktop dev
 - 当前平台 Android `platform-tools/adb`
 - `scrcpy-server.bin`
 
-如果要启用自动安装 ATX 和自动 push uiautomator2，请把以下文件放到：
+`prepare:android-resources` 会自动下载 `u2.jar`。如果要启用自动安装 ATX，请把以下文件放到：
 
 ```text
 apps/desktop/resources/android/atx-agent.apk
-apps/desktop/resources/android/u2.jar
 ```
 
 ## 打包分发
@@ -46,7 +45,8 @@ pnpm --filter desktop build:app
 
 - 内置 ADB：用户不需要额外安装 Android platform-tools。
 - scrcpy server：用户不需要手动下载或安装 scrcpy。
-- 可选 ATX APK / `u2.jar`：如果构建前放入资源目录，用户不需要手动运行 `python -m uiautomator2 init`。
+- 可选 ATX APK：如果构建前放入资源目录，用户不需要手动运行 `python -m uiautomator2 init`。
+- `u2.jar`：构建资源准备阶段会自动下载并打包。
 
 ## 运行时资源优先级
 

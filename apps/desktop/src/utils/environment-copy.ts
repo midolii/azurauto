@@ -27,6 +27,12 @@ export function getPhaseCopy(status: BootstrapStatus | null) {
 				description: "正在向设备安装小黄车自动化组件，请不要关闭模拟器。",
 				badgeClass: "bg-cyan-500/15 text-cyan-300",
 			};
+		case "adb-recovering":
+			return {
+				label: "恢复 ADB 中",
+				description: "正在启动或重启 ADB 服务，然后重新检查设备列表。",
+				badgeClass: "bg-amber-500/15 text-amber-300",
+			};
 		case "failed":
 			return {
 				label: "检查失败",

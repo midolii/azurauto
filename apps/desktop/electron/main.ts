@@ -12,6 +12,17 @@ import { resolveAndroidResources } from "./utils/android-resources.ts";
 import { RendererServerManager } from "./utils/renderer-server.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const APP_NAME = "azurauto";
+const APP_ID = "net.midolii.azurauto";
+const AZURAUTO_ADB_SERVER_PORT = Number(
+	process.env.AZURAUTO_ADB_SERVER_PORT ?? 15_037,
+);
+
+app.setName(APP_NAME);
+
+if (process.platform === "win32") {
+	app.setAppUserModelId(APP_ID);
+}
 
 let mainWindow: Electron.BrowserWindow | null = null;
 const rendererServer = new RendererServerManager(app);
@@ -25,7 +36,10 @@ let isRunningQuitCleanup = false;
 async function createMainWindow() {
 	console.log("Electron app ready. Creating window...");
 	const resources = resolveAndroidResources();
-	const adb = new AdbClient({ bin: resources.adbPath });
+	const adb = new AdbClient({
+		bin: resources.adbPath,
+		port: AZURAUTO_ADB_SERVER_PORT,
+	});
 	bootstrapService = new DeviceBootstrapService({
 		adb,
 		atx: createDefaultAtxInstallStrategy(resources.atxApkPath),
@@ -91,7 +105,8 @@ app.on("before-quit", (event) => {
 });
 
 async function shutdownNativeResources() {
-	// 退出状态转换：先停设备/预览资源，再停内置 renderer server，避免残留后台句柄。
+	// 退出状态转换：先停设备/预览资源，再停 AzurAuto 专用 ADB server 和内置 renderer server，避免残留后台句柄。
 	await cleanupIpcResources();
+	await bootstrapService?.shutdown();
 	rendererServer.stop();
 }

@@ -34,6 +34,53 @@ describe("AdbClient", () => {
 		]);
 	});
 
+	it("returns devices without recovery when devices already exist", async () => {
+		const startServer = vi.spyOn(AdbClient.prototype, "startServer");
+		const client = new AdbClient({
+			adapter: {
+				listDevices: async () => [
+					{ id: "emulator-5554", type: "device" },
+				],
+				getDevice: vi.fn(),
+			},
+		});
+
+		await expect(client.listDevicesWithRecovery()).resolves.toEqual([
+			{ serial: "emulator-5554", state: "device", rawState: "device" },
+		]);
+		expect(startServer).not.toHaveBeenCalled();
+		startServer.mockRestore();
+	});
+
+	it("starts server, then restarts adb if retry is still empty", async () => {
+		const startServer = vi
+			.spyOn(AdbClient.prototype, "startServer")
+			.mockResolvedValue(undefined);
+		const restartServer = vi
+			.spyOn(AdbClient.prototype, "restartServer")
+			.mockResolvedValue(undefined);
+		const listDevices = vi
+			.fn()
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([])
+			.mockResolvedValueOnce([{ id: "emulator-5554", type: "device" }]);
+		const client = new AdbClient({
+			adapter: { listDevices, getDevice: vi.fn() },
+			timeoutMs: 1_000,
+		});
+
+		await expect(
+			client.listDevicesWithRecovery({ recoveryDelayMs: 0 }),
+		).resolves.toEqual([
+			{ serial: "emulator-5554", state: "device", rawState: "device" },
+		]);
+		expect(startServer).toHaveBeenCalledOnce();
+		expect(restartServer).toHaveBeenCalledOnce();
+		expect(listDevices).toHaveBeenCalledTimes(3);
+		startServer.mockRestore();
+		restartServer.mockRestore();
+	});
+
 	it("returns structured shell results", async () => {
 		const client = new AdbClient({
 			adapter: {

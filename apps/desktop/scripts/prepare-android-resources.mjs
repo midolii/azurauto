@@ -14,6 +14,7 @@ const platformToolsUrls = {
 	win32: "https://dl.google.com/android/repository/platform-tools-latest-windows.zip",
 	linux: "https://dl.google.com/android/repository/platform-tools-latest-linux.zip",
 };
+const uiautomator2JarUrl = "https://public.uiauto.devsleep.com/u2jar/0.2.2/u2.jar";
 
 const platformKey = process.platform;
 const platformToolsUrl = platformToolsUrls[platformKey];
@@ -26,6 +27,7 @@ await mkdir(resourcesDir, { recursive: true });
 await mkdir(downloadsDir, { recursive: true });
 
 await prepareScrcpyServer();
+await prepareUiautomator2Jar();
 await preparePlatformTools();
 await writeResourceManifest();
 
@@ -39,6 +41,10 @@ async function prepareScrcpyServer() {
 	const target = join(resourcesDir, "scrcpy-server.bin");
 
 	await copyFile(source, target);
+}
+
+async function prepareUiautomator2Jar() {
+	await downloadFile(uiautomator2JarUrl, join(resourcesDir, "u2.jar"));
 }
 
 async function preparePlatformTools() {
