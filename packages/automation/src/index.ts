@@ -272,6 +272,7 @@ export type Uiautomator2ScreenshotSourceOptions = {
 export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	private static readonly deviceJarPath = "/data/local/tmp/u2.jar";
 	private static readonly deviceLogPath = "/data/local/tmp/azurauto-u2.log";
+	private static readonly devicePidPath = "/data/local/tmp/azurauto-u2.pid";
 	private readonly jsonRpcPort: number;
 	private localPort: number;
 	private readonly jarPath?: string;
@@ -351,7 +352,7 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 
 		if (!(await this.canConnectJsonRpc())) {
 			await this.startJsonRpcServer(serial);
-			await this.waitForJsonRpc();
+			await this.waitForJsonRpc(serial);
 		}
 	}
 
@@ -362,14 +363,14 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 		// 设备端 u2.jar 准备完成后，启动 JSON-RPC server。
 		await this.adb.shell(
 			serial,
-			`rm -f ${Uiautomator2ScreenshotSource.deviceLogPath}; CLASSPATH=${Uiautomator2ScreenshotSource.deviceJarPath} app_process / com.wetest.uia2.Main >${Uiautomator2ScreenshotSource.deviceLogPath} 2>&1 &`,
+			`rm -f ${Uiautomator2ScreenshotSource.deviceLogPath} ${Uiautomator2ScreenshotSource.devicePidPath}; (trap '' HUP; echo $$ >${Uiautomator2ScreenshotSource.devicePidPath}; exec >>${Uiautomator2ScreenshotSource.deviceLogPath} 2>&1; echo '[azurauto] starting uiautomator2 json-rpc server'; export CLASSPATH=${Uiautomator2ScreenshotSource.deviceJarPath}; exec app_process / com.wetest.uia2.Main) >/dev/null 2>&1 &`,
 		);
 	}
 
 	private async stopJsonRpcServer(serial: string) {
 		await this.adb.shell(
 			serial,
-			"for pid in $(pidof app_process 2>/dev/null); do tr '\\0' ' ' < /proc/$pid/cmdline | grep -q 'com.wetest.uia2.Main' && kill $pid; done >/dev/null 2>&1 || true",
+			`pid=$(cat ${Uiautomator2ScreenshotSource.devicePidPath} 2>/dev/null || true); if [ -n "$pid" ]; then kill "$pid" 2>/dev/null || true; fi; for pid in $(pidof app_process 2>/dev/null); do tr '\\0' ' ' < /proc/$pid/cmdline | grep -q 'com.wetest.uia2.Main' && kill $pid; done >/dev/null 2>&1 || true`,
 		);
 	}
 
@@ -383,6 +384,14 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 			return;
 		}
 
+		if (this.jarPath && !existsSync(this.jarPath)) {
+			throw new DeviceBootstrapError(
+				"UNKNOWN",
+				`未找到 uiautomator2 u2.jar：${this.jarPath}。请重新准备应用资源后再启动。`,
+				true,
+			);
+		}
+
 		const result = await this.adb.shell(
 			serial,
 			`test -f ${Uiautomator2ScreenshotSource.deviceJarPath} && echo present || echo missing`,
@@ -394,7 +403,7 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 		if (!this.jarPath || !existsSync(this.jarPath)) {
 			throw new DeviceBootstrapError(
 				"UNKNOWN",
-				"未找到 uiautomator2 u2.jar，请将 u2.jar 放入应用资源目录或设置打包资源。",
+				"未找到 uiautomator2 u2.jar，请重新准备应用资源后再启动。",
 				true,
 			);
 		}
@@ -402,7 +411,7 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 		await this.adb.pushFile(serial, this.jarPath, "/data/local/tmp/u2.jar");
 	}
 
-	private async waitForJsonRpc() {
+	private async waitForJsonRpc(serial: string) {
 		for (let attempt = 0; attempt < 50; attempt += 1) {
 			try {
 				if (await this.pingJsonRpc()) {
@@ -413,11 +422,25 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 			}
 		}
 
+		const diagnostics = await this.readJsonRpcServerDiagnostics(serial);
+
 		throw new DeviceBootstrapError(
 			"UNKNOWN",
-			"uiautomator2 JSON-RPC 服务启动失败，请确认应用资源中的 u2.jar 可用，并查看设备端 /data/local/tmp/azurauto-u2.log。",
+			`uiautomator2 JSON-RPC 服务启动失败。设备端诊断：${diagnostics || "未读取到诊断信息，请确认设备连接状态。"}`,
 			true,
 		);
+	}
+
+	private async readJsonRpcServerDiagnostics(serial: string) {
+		try {
+			const result = await this.adb.shell(
+				serial,
+				`pid=$(cat ${Uiautomator2ScreenshotSource.devicePidPath} 2>/dev/null || true); printf 'pid='; printf '%s' "$pid"; printf '\ncmdline='; if [ -n "$pid" ]; then tr '\\0' ' ' < /proc/$pid/cmdline 2>/dev/null || true; fi; printf '\nprocess='; ps -A | grep -E 'app_process|com.wetest.uia2' || true; printf '\nport='; netstat -an 2>/dev/null | grep ':${this.jsonRpcPort}' || true; printf '\nlog='; cat ${Uiautomator2ScreenshotSource.deviceLogPath} 2>/dev/null || true`,
+			);
+			return result.stdout.trim().slice(-1200);
+		} catch {
+			return "";
+		}
 	}
 
 	private async canConnectJsonRpc() {

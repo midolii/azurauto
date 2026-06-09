@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AdbClient } from "@azurauto/adb";
@@ -6,7 +7,7 @@ import {
  	createDefaultAtxInstallStrategy,
 } from "@azurauto/automation";
 import { DeviceBootstrapService } from "@azurauto/automation";
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from "electron";
 import { cleanupIpcResources, registerIpcHandlers } from "./ipc/handlers/index.ts";
 import { resolveAndroidResources } from "./utils/android-resources.ts";
 import { RendererServerManager } from "./utils/renderer-server.ts";
@@ -19,6 +20,10 @@ const AZURAUTO_ADB_SERVER_PORT = Number(
 );
 
 app.setName(APP_NAME);
+
+if (app.isPackaged) {
+	Menu.setApplicationMenu(createPackagedApplicationMenu());
+}
 
 if (process.platform === "win32") {
 	app.setAppUserModelId(APP_ID);
@@ -36,6 +41,7 @@ let isRunningQuitCleanup = false;
 async function createMainWindow() {
 	console.log("Electron app ready. Creating window...");
 	const resources = resolveAndroidResources();
+	console.log("Resolved Android resources:", resources);
 	const adb = new AdbClient({
 		bin: resources.adbPath,
 		port: AZURAUTO_ADB_SERVER_PORT,
@@ -58,11 +64,12 @@ async function createMainWindow() {
 	// 环境检查异步启动，避免 ADB/ATX 安装耗时阻塞主窗口展示。
 	void bootstrapService.run();
 
-	const rendererUrl = await rendererServer.getRendererUrl();
-
 	mainWindow = new BrowserWindow({
 		width: 1280,
 		height: 720,
+		minWidth: 1024,
+		minHeight: 640,
+		backgroundColor: "#020617",
 		webPreferences: {
 			// Electron 加载的是 preload TS 源码打包后的 CommonJS 产物。
 			preload: join(__dirname, "preload/dist/index.cjs"),
@@ -79,9 +86,76 @@ async function createMainWindow() {
 		mainWindow = null;
 	});
 
+
+	if (app.isPackaged) {
+		registerBlockedShortcuts(mainWindow);
+	}
+
+	await mainWindow.loadURL(createStartupSplashUrl());
+	const rendererUrl = await rendererServer.getRendererUrl();
+
 	mainWindow.loadURL(rendererUrl).catch((error) => {
 		console.error("Failed to load renderer:", error);
 	});
+}
+
+function registerBlockedShortcuts(window: Electron.BrowserWindow) {
+	window.webContents.on("before-input-event", (event, input) => {
+		if (isBlockedShortcut(input)) {
+			event.preventDefault();
+		}
+	});
+}
+
+function isBlockedShortcut(input: Electron.Input) {
+	const key = input.key.toLowerCase();
+	const hasCommandModifier = input.control || input.meta;
+	const isDevToolsShortcut =
+		key === "f12" ||
+		(hasCommandModifier && input.shift && (key === "i" || key === "j"));
+
+	return (
+		key === "f5" ||
+		(hasCommandModifier && key === "r") ||
+		(hasCommandModifier && key === "f") ||
+		isDevToolsShortcut
+	);
+}
+
+function createPackagedApplicationMenu() {
+	const template: MenuItemConstructorOptions[] = [
+		...(process.platform === "darwin"
+			? [
+					{
+						label: APP_NAME,
+						submenu: [{ role: "quit" as const }],
+					},
+				]
+			: []),
+		{
+			label: "Edit",
+			submenu: [
+				{ role: "undo" },
+				{ role: "redo" },
+				{ type: "separator" },
+				{ role: "cut" },
+				{ role: "copy" },
+				{ role: "paste" },
+				{ role: "selectAll" },
+			],
+		},
+	];
+
+	return Menu.buildFromTemplate(template);
+}
+
+function createStartupSplashUrl() {
+	const html = readFileSync(
+		join(__dirname, "template", "startup-splash.html"),
+		"utf8",
+	);
+
+	return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 
 app.whenReady().then(createMainWindow);
