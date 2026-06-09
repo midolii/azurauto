@@ -1,5 +1,6 @@
 import type { DeviceBootstrapService } from "@azurauto/automation";
 import { ipcChannels, type ScriptRuntimeStatus } from "../contract/index.ts";
+import { logEntry } from "../../utils/global-logger.ts";
 import { handleIpc } from "./typed-handle.ts";
 
 let runtimeStatus = createRuntimeStatus("idle", "脚本未运行。", false);
@@ -12,6 +13,11 @@ export function registerRuntimeIpcHandlers(
 
 	handleIpc(ipcChannels.runtimeStart, async () => {
 		if (runtimeStatus.phase === "running" || runtimeStatus.phase === "starting") {
+			logEntry({
+				level: "debug",
+				scope: "runtime.start.skip",
+				message: `runtime start skipped because phase is ${runtimeStatus.phase}`,
+			});
 			return runtimeStatus;
 		}
 
@@ -21,7 +27,21 @@ export function registerRuntimeIpcHandlers(
 			false,
 		);
 
-		const bootstrapStatus = await bootstrapService.run();
+		const currentBootstrapStatus = bootstrapService.getStatus();
+		const canReuseWarmBootstrap =
+			currentBootstrapStatus.phase === "ready" && currentBootstrapStatus.serial;
+		const bootstrapStatus = canReuseWarmBootstrap
+			? currentBootstrapStatus
+			: await bootstrapService.run();
+
+		if (canReuseWarmBootstrap) {
+			logEntry({
+				level: "debug",
+				scope: "runtime.start.warmBootstrapReuse",
+				message: "reused ready bootstrap status without running ADB checks",
+			});
+		}
+
 		if (bootstrapStatus.phase !== "ready" || !bootstrapStatus.serial) {
 			runtimeStatus = createRuntimeStatus(
 				"error",

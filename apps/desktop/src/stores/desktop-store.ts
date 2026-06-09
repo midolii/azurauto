@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import type {
+	LogEntry,
 	ScriptRuntimeStatus,
 	StartupResourceStatus,
 } from "../../electron/ipc/contract/index.ts";
@@ -28,6 +29,7 @@ export interface TaskExecutionState {
 export interface DesktopState {
 	activePage: DesktopPage;
 	settings: DesktopSettingsState;
+	logs: LogEntry[];
 	scriptLogs: ScriptLogEntry[];
 	taskExecution: TaskExecutionState;
 	runtime: ScriptRuntimeStatus;
@@ -42,6 +44,7 @@ const initialState: DesktopState = {
 		configPath: null,
 		loadedAt: null,
 	},
+	logs: [],
 	scriptLogs: [
 		{
 			id: "welcome-log",
@@ -96,17 +99,22 @@ export const desktopStore = {
 		}));
 	},
 	appendScriptLog(message: string) {
+		this.appendLog({
+			id: crypto.randomUUID(),
+			level: "info",
+			scope: "script.test",
+			message,
+			timestamp: new Date().toISOString(),
+		});
+	},
+	appendLog(log: LogEntry) {
 		setState((current) => ({
 			...current,
-			scriptLogs: [
-				...current.scriptLogs,
-				{
-					id: crypto.randomUUID(),
-					message,
-					timestamp: new Date().toLocaleTimeString(),
-				},
-			],
+			logs: [...current.logs, log].slice(-500),
 		}));
+	},
+	setLogs(logs: LogEntry[]) {
+		setState((current) => ({ ...current, logs: logs.slice(-500) }));
 	},
 	setTaskExecution(taskExecution: Partial<TaskExecutionState>) {
 		setState((current) => ({

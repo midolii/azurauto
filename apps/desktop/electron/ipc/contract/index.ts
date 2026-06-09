@@ -2,11 +2,17 @@ import {
 	environmentIpcChannels,
 	type EnvironmentIpcContract,
 } from "./environment.ts";
+import {
+	loggerIpcChannels,
+	loggerRendererEventChannels,
+	type LoggerIpcContract,
+} from "./logger.ts";
 import { runtimeIpcChannels, type RuntimeIpcContract } from "./runtime.ts";
 import { scrcpyIpcChannels, scrcpyRendererEventChannels } from "./scrcpy.ts";
 import type { ScrcpyIpcContract } from "./scrcpy.ts";
 
 export type * from "./environment.ts";
+export type * from "./logger.ts";
 export type * from "./runtime.ts";
 export type * from "./scrcpy.ts";
 
@@ -16,7 +22,10 @@ export type * from "./scrcpy.ts";
  *
  * 按业务域拆分 contract 后在这里聚合，避免单文件持续膨胀，同时保持跨进程类型检查入口稳定。
  */
-export type IpcContract = EnvironmentIpcContract & RuntimeIpcContract & ScrcpyIpcContract;
+export type IpcContract = EnvironmentIpcContract &
+	LoggerIpcContract &
+	RuntimeIpcContract &
+	ScrcpyIpcContract;
 
 /**
  * Stable channel constants. Prefer these over raw string literals.
@@ -28,6 +37,8 @@ export const ipcChannels = {
 	environmentPrepareResources: environmentIpcChannels.prepareResources,
 	environmentRunBootstrap: environmentIpcChannels.runBootstrap,
 	environmentCaptureScreenshot: environmentIpcChannels.captureScreenshot,
+	loggerGetEntries: loggerIpcChannels.getEntries,
+	loggerClearEntries: loggerIpcChannels.clearEntries,
 	runtimeGetStatus: runtimeIpcChannels.getStatus,
 	runtimeStart: runtimeIpcChannels.start,
 	runtimePause: runtimeIpcChannels.pause,
@@ -37,6 +48,7 @@ export const ipcChannels = {
 } as const satisfies Record<string, keyof IpcContract>;
 
 export const rendererEventChannels = {
+	loggerEntry: loggerRendererEventChannels.entry,
 	scrcpyVideoEvent: scrcpyRendererEventChannels.videoEvent,
 } as const;
 

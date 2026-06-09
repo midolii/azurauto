@@ -1,5 +1,6 @@
 import type {
 	EnvironmentApi,
+	LoggerApi,
 	RuntimeApi,
 	ScrcpyApi,
 } from "../../electron/preload/index.ts";
@@ -7,6 +8,7 @@ import type {
 declare global {
 	interface Window {
 		environment: EnvironmentApi;
+		logger: LoggerApi;
 		runtime: RuntimeApi;
 		scrcpy: ScrcpyApi;
 	}

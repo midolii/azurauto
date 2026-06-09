@@ -2,6 +2,7 @@ import type { DeviceBootstrapService } from "@azurauto/automation";
 import type { AndroidResources } from "../../utils/android-resources.ts";
 import type { ResourcePreparationService } from "../../utils/resource-preparation.ts";
 import { registerEnvironmentIpcHandlers } from "./environment.ts";
+import { registerLoggerIpcHandlers } from "./logger.ts";
 import {
 	cleanupRuntimeIpcResources,
 	registerRuntimeIpcHandlers,
@@ -23,6 +24,7 @@ export function registerIpcHandlers(
 	resources?: AndroidResources,
 ) {
 	registerEnvironmentIpcHandlers(bootstrapService, resourcePreparationService);
+	registerLoggerIpcHandlers();
 	registerRuntimeIpcHandlers(bootstrapService);
 	registerScrcpyIpcHandlers(bootstrapService, resources);
 }

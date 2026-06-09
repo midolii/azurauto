@@ -63,7 +63,21 @@ export type DeviceBootstrapServiceOptions = {
 	onStatusChange?: (status: BootstrapStatus) => void;
 };
 
+export type AutomationLogEntry = {
+	level?: "info" | "warn" | "error" | "debug";
+	scope: string;
+	message: string;
+	durationMs?: number;
+};
+
+export type AutomationLogger = (entry: AutomationLogEntry) => void;
+
 const DEFAULT_ATX_PACKAGE = "com.github.uiautomator";
+let automationLogger: AutomationLogger | undefined;
+
+export function setAutomationLogger(logger: AutomationLogger | undefined) {
+	automationLogger = logger;
+}
 
 export function createDefaultAtxInstallStrategy(
 	apkPath = process.env.AZURAUTO_ATX_APK_PATH,
@@ -123,6 +137,7 @@ export class DeviceBootstrapService {
 
 	async captureScreenshot(): Promise<ScreenshotFrame> {
 		const { serial } = this.requireReadyDevice();
+		// 截图会在 runtime loop / debug preview 中高频执行，不写入全局日志，避免日志页刷屏。
 		const image = await this.screenshotSource.capture(serial);
 
 		return {
@@ -153,44 +168,37 @@ export class DeviceBootstrapService {
 	}
 
 	async run() {
+		return this.runWithOptions({ resetAdbServerBeforeCheck: false });
+	}
+
+	/**
+	 * 保留冷启动入口供后续“完整重连/修复环境”按钮使用。
+	 * 当前侧边栏 Start 走 warm-friendly run()，避免每次启动都重启 ADB server。
+	 */
+	async runColdStart() {
+		return this.runWithOptions({ resetAdbServerBeforeCheck: true });
+	}
+
+	private async runWithOptions(options: { resetAdbServerBeforeCheck: boolean }) {
 		// 防止用户连续点击“重试”导致多个安装流程同时写入同一台设备。
 		if (this.running) {
 			return this.running;
 		}
 
-		this.running = this.runInternal().finally(() => {
+		this.running = this.runInternal(options).finally(() => {
 			this.running = undefined;
 		});
 
 		return this.running;
 	}
 
-	private async runInternal() {
+	private async runInternal(options: { resetAdbServerBeforeCheck: boolean }) {
 		try {
 			this.setStatus(
 				createStatus("checking-adb", "正在检查 ADB 和已连接的模拟器。", false),
 			);
 
-			const adb = this.adb as AdbClient & {
-				listDevicesWithRecovery?: (options?: {
-					onRecoveryStart?: () => void;
-					resetServerBeforeCheck?: boolean;
-				}) => Promise<AdbDevice[]>;
-			};
-			const devices = adb.listDevicesWithRecovery
-				? await adb.listDevicesWithRecovery({
-						resetServerBeforeCheck: true,
-						onRecoveryStart: () => {
-							this.setStatus(
-								createStatus(
-									"adb-recovering",
-									"正在重启 AzurAuto 专用 ADB 服务后重新检查设备。",
-									false,
-								),
-							);
-						},
-					})
-				: await adb.listDevices();
+			const devices = await this.listDevicesWithDetailedRecovery(options);
 			const device = selectTargetDevice(devices);
 
 			this.setStatus(
@@ -205,7 +213,9 @@ export class DeviceBootstrapService {
 			);
 
 			if (
-				await this.adb.isPackageInstalled(device.serial, this.atx.packageName)
+				await measureDuration("bootstrap.atx.isPackageInstalled", () =>
+					this.adb.isPackageInstalled(device.serial, this.atx.packageName),
+				)
 			) {
 				return this.setStatus(
 					createStatus("ready", "ADB 设备和 ATX 自动化组件已就绪。", false, {
@@ -220,11 +230,15 @@ export class DeviceBootstrapService {
 				}),
 			);
 
-			await this.atx.install(this.adb, device.serial);
+			await measureDuration("bootstrap.atx.install", () =>
+				this.atx.install(this.adb, device.serial),
+			);
 
 			// 安装后必须再次检测，避免把“命令执行成功”误判为“设备能力可用”。
 			if (
-				await this.adb.isPackageInstalled(device.serial, this.atx.packageName)
+				await measureDuration("bootstrap.atx.verifyPackageInstalled", () =>
+					this.adb.isPackageInstalled(device.serial, this.atx.packageName),
+				)
 			) {
 				return this.setStatus(
 					createStatus("ready", "ATX 安装完成，自动化环境已就绪。", false, {
@@ -240,6 +254,104 @@ export class DeviceBootstrapService {
 			);
 		} catch (error) {
 			return this.setStatus(toFailureStatus(error));
+		}
+	}
+
+	private async listDevicesWithDetailedRecovery(options: {
+		resetAdbServerBeforeCheck: boolean;
+	}) {
+		const shouldRecover = (error: unknown, devices: AdbDevice[]) =>
+			devices.length === 0 ||
+			(error instanceof AdbError && error.code === "ADB_TIMEOUT");
+
+		let devices: AdbDevice[] = [];
+
+		if (options.resetAdbServerBeforeCheck) {
+			this.setStatus(
+				createStatus(
+					"adb-recovering",
+					"正在重启 AzurAuto 专用 ADB 服务后重新检查设备。",
+					false,
+				),
+			);
+			await measureDuration("bootstrap.adb.coldRestartServer", () =>
+				this.adb.restartServer(),
+			);
+			devices = await measureDuration(
+				"bootstrap.adb.waitForDevicesAfterColdRestart",
+				() => this.waitForDevicesAfterServerChange(),
+			);
+			if (!shouldRecover(undefined, devices)) {
+				return devices;
+			}
+		}
+
+		try {
+			devices = await measureDuration("bootstrap.adb.listInitial", () =>
+				this.adb.listDevices(),
+			);
+			if (!shouldRecover(undefined, devices)) {
+				return devices;
+			}
+		} catch (error) {
+			if (!shouldRecover(error, devices)) {
+				throw error;
+			}
+		}
+
+		this.setStatus(
+			createStatus(
+				"adb-recovering",
+				"正在启动 AzurAuto 专用 ADB 服务后重新检查设备。",
+				false,
+			),
+		);
+		await measureDuration("bootstrap.adb.startServer", () =>
+			this.adb.startServer(),
+		);
+
+		try {
+			devices = await measureDuration(
+				"bootstrap.adb.waitForDevicesAfterStartServer",
+				() => this.waitForDevicesAfterServerChange(),
+			);
+			if (!shouldRecover(undefined, devices)) {
+				return devices;
+			}
+		} catch (error) {
+			if (!shouldRecover(error, devices)) {
+				throw error;
+			}
+		}
+
+		this.setStatus(
+			createStatus(
+				"adb-recovering",
+				"正在重启 AzurAuto 专用 ADB 服务后重新检查设备。",
+				false,
+			),
+		);
+		await measureDuration("bootstrap.adb.restartServer", () =>
+			this.adb.restartServer(),
+		);
+		return measureDuration(
+			"bootstrap.adb.waitForDevicesAfterRestartServer",
+			() => this.waitForDevicesAfterServerChange(),
+		);
+	}
+
+	private async waitForDevicesAfterServerChange() {
+		const maxWaitMs = 1200;
+		const intervalMs = 200;
+		const deadline = Date.now() + maxWaitMs;
+
+		while (true) {
+			const devices = await this.adb.listDevices();
+			if (devices.length > 0 || Date.now() >= deadline) {
+				return devices;
+			}
+
+			await sleep(Math.min(intervalMs, deadline - Date.now()));
 		}
 	}
 
@@ -278,6 +390,8 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	private readonly jarPath?: string;
 	private readonly requestTimeoutMs: number;
 	private forwardedSerial?: string;
+	private ensureServerPromise?: Promise<void>;
+	private ensureServerSerial?: string;
 
 	constructor(
 		private readonly adb: AdbClient,
@@ -318,8 +432,30 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	}
 
 	private async ensureJsonRpcServer(serial: string) {
+		if (this.ensureServerPromise) {
+			if (this.ensureServerSerial === serial) {
+				await this.ensureServerPromise;
+				return;
+			}
+
+			await this.ensureServerPromise;
+		}
+
+		this.ensureServerSerial = serial;
+		this.ensureServerPromise = this.ensureJsonRpcServerInternal(serial).finally(
+			() => {
+				this.ensureServerSerial = undefined;
+				this.ensureServerPromise = undefined;
+			},
+		);
+
+		return this.ensureServerPromise;
+	}
+
+	private async ensureJsonRpcServerInternal(serial: string) {
 		if (this.forwardedSerial === serial) {
 			try {
+				// warm ping 是每帧截图前的轻量健康检查，不记录为日志。
 				await this.pingJsonRpc();
 				return;
 			} catch {
@@ -331,10 +467,12 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 			const localPort = this.localPort + offset;
 
 			try {
-				await this.adb.forward(
-					serial,
-					`tcp:${localPort}`,
-					`tcp:${this.jsonRpcPort}`,
+				await measureDuration("uiautomator2.forward", () =>
+					this.adb.forward(
+						serial,
+						`tcp:${localPort}`,
+						`tcp:${this.jsonRpcPort}`,
+					),
 				);
 				this.forwardedSerial = serial;
 				this.localPort = localPort;
@@ -350,9 +488,17 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 			}
 		}
 
-		if (!(await this.canConnectJsonRpc())) {
-			await this.startJsonRpcServer(serial);
-			await this.waitForJsonRpc(serial);
+		if (
+			!(await measureDuration("uiautomator2.canConnectJsonRpc", () =>
+				this.canConnectJsonRpc(),
+			))
+		) {
+			await measureDuration("uiautomator2.startJsonRpcServer", () =>
+				this.startJsonRpcServer(serial),
+			);
+			await measureDuration("uiautomator2.waitForJsonRpc", () =>
+				this.waitForJsonRpc(serial),
+			);
 		}
 	}
 
@@ -375,15 +521,6 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	}
 
 	private async ensureUiautomator2Jar(serial: string) {
-		if (this.jarPath && existsSync(this.jarPath)) {
-			await this.adb.pushFile(
-				serial,
-				this.jarPath,
-				Uiautomator2ScreenshotSource.deviceJarPath,
-			);
-			return;
-		}
-
 		if (this.jarPath && !existsSync(this.jarPath)) {
 			throw new DeviceBootstrapError(
 				"UNKNOWN",
@@ -392,9 +529,11 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 			);
 		}
 
-		const result = await this.adb.shell(
-			serial,
-			`test -f ${Uiautomator2ScreenshotSource.deviceJarPath} && echo present || echo missing`,
+		const result = await measureDuration("uiautomator2.checkDeviceJar", () =>
+			this.adb.shell(
+				serial,
+				`test -f ${Uiautomator2ScreenshotSource.deviceJarPath} && echo present || echo missing`,
+			),
 		);
 		if (result.stdout.trim() === "present") {
 			return;
@@ -408,17 +547,20 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 			);
 		}
 
-		await this.adb.pushFile(serial, this.jarPath, "/data/local/tmp/u2.jar");
+		const jarPath = this.jarPath;
+		await measureDuration("uiautomator2.pushJar", () =>
+			this.adb.pushFile(serial, jarPath, "/data/local/tmp/u2.jar"),
+		);
 	}
 
 	private async waitForJsonRpc(serial: string) {
-		for (let attempt = 0; attempt < 50; attempt += 1) {
+		for (let attempt = 0; attempt < 200; attempt += 1) {
 			try {
 				if (await this.pingJsonRpc()) {
 					return;
 				}
 			} catch {
-				await new Promise((resolve) => setTimeout(resolve, 200));
+				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
 		}
 
@@ -612,4 +754,30 @@ function createStatus(
 		updatedAt: new Date().toISOString(),
 		...extra,
 	};
+}
+
+async function measureDuration<T>(label: string, action: () => Promise<T>) {
+	const startedAt = Date.now();
+	try {
+		return await action();
+	} finally {
+		logDuration(label, startedAt);
+	}
+}
+
+function logDuration(label: string, startedAt: number) {
+	const durationMs = Date.now() - startedAt;
+	automationLogger?.({
+		level: "debug",
+		scope: label,
+		message: "completed",
+		durationMs,
+	});
+	if (!automationLogger) {
+		console.log(`[azurauto:perf] ${label} ${durationMs}ms`);
+	}
+}
+
+function sleep(ms: number) {
+	return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }

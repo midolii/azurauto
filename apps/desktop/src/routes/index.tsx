@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { DesktopAppShell } from "../components/app-shell/desktop-app-shell";
 import { StartupLoadingScreen } from "../components/home/startup-loading-screen";
 import { useEnvironmentBootstrap } from "../hooks/use-environment-bootstrap";
+import { desktopStore } from "../stores/desktop-store";
 import { DebugPage } from "./~pages/debug-page";
 import { HomePage } from "./~pages/home-page";
 import { SettingsPage } from "./~pages/settings-page";
@@ -24,6 +26,7 @@ interface MainShellProps {
 }
 
 function Home() {
+	useLoggerSubscription();
 	const {
 		status,
 		resourceStatus,
@@ -54,6 +57,27 @@ function Home() {
 			</AnimatePresence>
 		</div>
 	);
+}
+
+function useLoggerSubscription() {
+	useEffect(() => {
+		let cancelled = false;
+
+		void window.logger.getEntries().then((entries) => {
+			if (!cancelled) {
+				desktopStore.setLogs(entries);
+			}
+		});
+
+		const unsubscribe = window.logger.onEntry((entry) => {
+			desktopStore.appendLog(entry);
+		});
+
+		return () => {
+			cancelled = true;
+			unsubscribe();
+		};
+	}, []);
 }
 
 function MainShell({

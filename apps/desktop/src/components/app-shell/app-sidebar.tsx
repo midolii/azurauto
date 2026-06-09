@@ -47,8 +47,8 @@ const navItems: Array<{
 	},
 	{
 		page: "tasks",
-		label: "任务执行",
-		description: "空状态预留",
+		label: "日志记录",
+		description: "运行与耗时",
 		icon: PlaySquare,
 	},
 ];

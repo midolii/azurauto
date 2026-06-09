@@ -3,8 +3,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AdbClient } from "@azurauto/adb";
 import {
+	type AutomationLogEntry,
  	Uiautomator2ScreenshotSource,
  	createDefaultAtxInstallStrategy,
+ 	setAutomationLogger,
 } from "@azurauto/automation";
 import { DeviceBootstrapService } from "@azurauto/automation";
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from "electron";
@@ -12,6 +14,7 @@ import { cleanupIpcResources, registerIpcHandlers } from "./ipc/handlers/index.t
 import { ResourcePreparationService } from "./utils/resource-preparation.ts";
 import { resolveAndroidResources } from "./utils/android-resources.ts";
 import { RendererServerManager } from "./utils/renderer-server.ts";
+import { logEntry } from "./utils/global-logger.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const APP_NAME = "azurauto";
@@ -41,6 +44,7 @@ let isRunningQuitCleanup = false;
  */
 async function createMainWindow() {
 	console.log("Electron app ready. Creating window...");
+	setAutomationLogger((entry: AutomationLogEntry) => logEntry(entry));
 	const resources = resolveAndroidResources();
 	console.log("Resolved Android resources:", resources);
 	const resourcePreparationService = new ResourcePreparationService(resources);
@@ -63,8 +67,13 @@ async function createMainWindow() {
 	// 在渲染进程加载前注册 IPC，确保 preload 调用时主进程 handler 已经存在。
 	registerIpcHandlers(bootstrapService, resourcePreparationService, resources);
 
-	// 启动阶段只准备本地资源，不连接 ADB；设备 bootstrap 由用户点击 Start/Debug 触发。
-	void resourcePreparationService.prepare();
+	// 启动阶段仍不做完整设备 bootstrap：不检查 ATX、不启动 uiautomator、不开始截图。
+	// 资源 ready 后只后台预热一次 ADB 设备枚举，降低用户点击 Start 时的冷 listDevices 耗时。
+	void resourcePreparationService.prepare().then((status) => {
+		if (status.ready) {
+			void prewarmAdbDeviceList(adb);
+		}
+	});
 
 	mainWindow = new BrowserWindow({
 		width: 1280,
@@ -99,6 +108,29 @@ async function createMainWindow() {
 	mainWindow.loadURL(rendererUrl).catch((error) => {
 		console.error("Failed to load renderer:", error);
 	});
+}
+
+async function prewarmAdbDeviceList(adb: AdbClient) {
+	const startedAt = Date.now();
+	try {
+		const devices = await adb.listDevices();
+		logEntry({
+			level: "debug",
+			scope: "startup.adb.prewarmListDevices",
+			message: `prewarmed ADB device list (${devices.length} device${devices.length === 1 ? "" : "s"})`,
+			durationMs: Date.now() - startedAt,
+		});
+	} catch (error) {
+		logEntry({
+			level: "warn",
+			scope: "startup.adb.prewarmListDevices",
+			message:
+				error instanceof Error
+					? error.message
+					: "ADB device list prewarm failed.",
+			durationMs: Date.now() - startedAt,
+		});
+	}
 }
 
 function registerBlockedShortcuts(window: Electron.BrowserWindow) {
