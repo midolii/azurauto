@@ -10,24 +10,17 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev:web": "vite dev --port 3000",
-    "dev:electron:only": "electron ./electron/main.ts",
-    "dev:electron": "node ./scripts/dev-electron.mjs",
-    "dev": "pnpm build:deps && pnpm build:preload && pnpm dev:electron",
-    "clean:build-output": "node ./scripts/clean-build-output.mjs",
-    "build:web": "pnpm clean:build-output && vite build",
-    "build:deps": "pnpm --filter @azurauto/adb build && pnpm --filter @azurauto/automation build",
-    "build:preload": "node ./scripts/build-preload.mjs",
-    "fetch:scrcpy-server": "pnpm --filter @azurauto/adb fetch:scrcpy-server",
-    "prepare:android-resources": "node ./scripts/prepare-android-resources.mjs",
-    "build": "pnpm build:preload && pnpm build:web",
-    "build:app": "pnpm build:deps && pnpm prepare:android-resources && pnpm build:preload && pnpm build:web && electron-builder",
+    "dev:electron": "node ./build/dev.mjs --skip-setup",
+    "dev": "node ./build/dev.mjs",
+    "build": "node ./build/build.mjs web",
+    "build:app": "node ./build/build.mjs app",
+    "resources": "node ./build/build.mjs resources",
+    "generate:icons": "node ./scripts/generate-icons.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check",
-    "generate:icons": "node ./scripts/generate-icons.mjs"
+    "check": "biome check"
   },
   "dependencies": {
     "@azurauto/adb": "workspace:*",
@@ -68,6 +61,7 @@
     "@vitejs/plugin-react": "^6.0.2",
     "@yume-chan/fetch-scrcpy-server": "^1.0.0",
     "@yume-chan/scrcpy": "^2.3.0",
+    "code-inspector-plugin": "^1.5.3",
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "electron": "^42.3.3",
@@ -82,53 +76,5 @@
     "vite": "^8.0.16",
     "vitest": "^4.1.8",
     "wait-on": "^9.0.10"
-  },
-  "build": {
-    "appId": "net.midolii.azurauto",
-    "productName": "azurauto",
-    "executableName": "azurauto",
-    "icon": "public/icon",
-    "directories": {
-      "output": "release",
-      "buildResources": "public"
-    },
-    "files": [
-      "electron/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": ".output",
-        "to": ".output"
-      },
-      {
-        "from": "resources/android",
-        "to": "android"
-      }
-    ],
-    "mac": {
-      "identity": null,
-      "icon": "public/icon.icns",
-      "extendInfo": {
-        "CFBundleName": "azurauto",
-        "CFBundleDisplayName": "azurauto"
-      },
-      "target": [
-        "dmg",
-        "zip"
-      ]
-    },
-    "win": {
-      "icon": "public/icon.ico",
-      "target": [
-        "nsis"
-      ]
-    },
-    "linux": {
-      "icon": "public/icon.png",
-      "target": [
-        "AppImage"
-      ]
-    }
   }
 }

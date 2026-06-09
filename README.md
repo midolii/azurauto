@@ -12,16 +12,17 @@ AzurAuto 是一个 monorepo，当前包含 Electron 桌面端和项目自有 ADB
 
 ```bash
 pnpm install
-pnpm --filter desktop prepare:android-resources
+pnpm --filter desktop resources
 pnpm --filter desktop dev
 ```
 
-`prepare:android-resources` 会下载并整理：
+`resources` 会下载并整理：
 
 - 当前平台 Android `platform-tools/adb`
 - `scrcpy-server.bin`
+- `u2.jar`
 
-`prepare:android-resources` 会自动下载 `u2.jar`。如果要启用自动安装 ATX，请把以下文件放到：
+如果要启用自动安装 ATX，请把以下文件放到：
 
 ```text
 apps/desktop/resources/android/atx-agent.apk
@@ -48,6 +49,28 @@ pnpm --filter desktop build:app
 - 可选 ATX APK：如果构建前放入资源目录，用户不需要手动运行 `python -m uiautomator2 init`。
 - `u2.jar`：构建资源准备阶段会自动下载并打包。
 
+Electron Builder 配置位于：
+
+```text
+apps/desktop/build/electron-builder.config.cjs
+```
+
+## 图标生成
+
+默认使用 `apps/desktop/public/icon-source.png` 生成桌面端图标：
+
+```bash
+pnpm --filter desktop generate:icons
+```
+
+也可以传入自定义源图：
+
+```bash
+pnpm --filter desktop generate:icons -- ./path/to/icon-source.png
+```
+
+脚本会生成 `public/icon.png`、`public/icon-dev.png`、`public/icon.icns`、`public/icon.ico`、favicon 和移动端图标。
+
 ## 运行时资源优先级
 
 桌面端运行时会优先读取打包资源：
@@ -71,9 +94,10 @@ AZURAUTO_SCRCPY_SERVER_PATH=/absolute/path/to/scrcpy-server.bin pnpm --filter de
 ## 常用命令
 
 ```bash
-pnpm --filter @azurauto/adb build
-pnpm --filter @azurauto/adb test
-pnpm --filter @azurauto/automation build
-pnpm --filter @azurauto/automation test
+pnpm --filter desktop dev
+pnpm --filter desktop resources
 pnpm --filter desktop build
+pnpm --filter desktop build:app
+pnpm --filter desktop generate:icons
+pnpm --filter desktop check
 ```

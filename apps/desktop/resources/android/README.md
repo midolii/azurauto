@@ -1,6 +1,6 @@
 # Android runtime resources
 
-此目录由 `pnpm --filter desktop prepare:android-resources` 管理，用于 Electron 打包时随应用分发 Android native 资源。
+此目录由 `pnpm --filter desktop resources` 管理，用于 Electron 打包时随应用分发 Android native 资源。
 
 自动生成：
 

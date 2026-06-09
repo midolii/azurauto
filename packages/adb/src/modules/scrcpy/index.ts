@@ -136,7 +136,7 @@ export class EmbeddedScrcpyClient {
 		// 这里仅验证并读取二进制，资源解析由 desktop 层负责。
 		if (!existsSync(this.#options.serverPath)) {
 			throw new Error(
-				`未找到 scrcpy server：${this.#options.serverPath}。请执行 pnpm --filter desktop fetch:scrcpy-server（或 pnpm --filter @azurauto/adb fetch:scrcpy-server），也可以设置 AZURAUTO_SCRCPY_SERVER_PATH。`,
+				`未找到 scrcpy server：${this.#options.serverPath}。请执行 pnpm --filter desktop resources（或 pnpm --filter @azurauto/adb fetch:scrcpy-server），也可以设置 AZURAUTO_SCRCPY_SERVER_PATH。`,
 			);
 		}
 

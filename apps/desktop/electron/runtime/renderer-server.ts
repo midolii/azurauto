@@ -10,9 +10,9 @@ const RENDERER_READY_TIMEOUT_MS = 10_000;
  * Manages the renderer URL used by BrowserWindow.
  * 管理 BrowserWindow 使用的渲染进程 URL。
  *
- * Development: receives the Vite URL from scripts/dev-electron.mjs via
+ * Development: receives the Vite URL from build/dev.mjs via
  * ELECTRON_RENDERER_URL, so the port can change when 3000 is occupied.
- * 开发环境：通过 ELECTRON_RENDERER_URL 接收 scripts/dev-electron.mjs 启动的 Vite URL，
+ * 开发环境：通过 ELECTRON_RENDERER_URL 接收 build/dev.mjs 启动的 Vite URL，
  * 因此 3000 被占用时也可以自动切换端口。
  *
  * Production: starts the built TanStack/Nitro server from .output/server and

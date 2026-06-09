@@ -12,6 +12,8 @@ dist
 dist-ssr
 out
 build
+!apps/desktop/build/
+!apps/desktop/build/**
 .next
 .turbo
 
