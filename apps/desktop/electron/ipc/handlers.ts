@@ -1,4 +1,4 @@
-import { AdbClient } from "@azurauto/adb";
+import type { DeviceBootstrapService } from "@azurauto/automation";
 import { type IpcMainInvokeEvent, ipcMain } from "electron";
 import {
 	type IpcChannel,
@@ -35,21 +35,17 @@ function handleIpc<Channel extends IpcChannel>(
  * Register all main-process IPC handlers.
  * 注册所有主进程 IPC handlers。
  */
-export function registerIpcHandlers() {
-	const adb = new AdbClient();
-
-	handleIpc(ipcChannels.adbTap, async (_event, { x, y }) => {
-		await adb.tap(x, y);
-		return true;
+export function registerIpcHandlers(bootstrapService: DeviceBootstrapService) {
+	// IPC 只暴露环境状态和重试入口，不再暴露测试用 tap/swipe/screenshot native 方法。
+	handleIpc(ipcChannels.environmentGetBootstrapStatus, async () => {
+		return bootstrapService.getStatus();
 	});
 
-	handleIpc(ipcChannels.adbSwipe, async (_event, payload) => {
-		await adb.swipe(payload.x1, payload.y1, payload.x2, payload.y2);
-		return true;
+	handleIpc(ipcChannels.environmentRunBootstrap, async () => {
+		return bootstrapService.run();
 	});
 
-	handleIpc(ipcChannels.adbScreenshot, async () => {
-		const buffer = await adb.screenshot();
-		return buffer.toString("base64");
+	handleIpc(ipcChannels.environmentCaptureScreenshot, async () => {
+		return bootstrapService.captureScreenshot();
 	});
 }

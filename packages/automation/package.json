@@ -1,6 +1,21 @@
 {
-  "name": "@azurauto/automation",
-  "version": "0.0.0",
-  "type": "module",
-  "author": "midolii"
+	"name": "@azurauto/automation",
+	"version": "0.0.0",
+	"type": "module",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run"
+	},
+	"author": "midolii",
+	"dependencies": {
+		"@azurauto/adb": "workspace:*"
+	},
+	"devDependencies": {
+		"vitest": "^4.1.5"
+	}
 }

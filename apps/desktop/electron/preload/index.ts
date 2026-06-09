@@ -1,7 +1,6 @@
 import { readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -20,7 +19,9 @@ const preloadModules = readdirSync(__dirname)
 	.sort();
 
 await Promise.all(
-	preloadModules.map((file) => import(pathToFileURL(join(__dirname, file)).href)),
+	preloadModules.map(
+		(file) => import(pathToFileURL(join(__dirname, file)).href),
+	),
 );
 
-export type { BotApi } from "./bot.ts";
+export type { EnvironmentApi } from "./environment.ts";

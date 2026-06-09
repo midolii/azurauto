@@ -1,110 +1,111 @@
 {
-  "name": "desktop",
-  "version": "0.1.0",
-  "description": "AzurAuto desktop app",
-  "author": "midolii",
-  "private": true,
-  "type": "module",
-  "main": "electron/main.ts",
-  "imports": {
-    "#/*": "./src/*"
-  },
-  "scripts": {
-    "dev:web": "vite dev --port 3000",
-    "dev:electron:only": "electron ./electron/main.ts",
-    "dev:electron": "node ./scripts/dev-electron.mjs",
-    "build:deps": "pnpm --filter @azurauto/adb build",
-    "dev": "pnpm build:deps && pnpm dev:electron",
-    "build:web": "vite build",
-    "build": "pnpm build:web",
-    "build:app": "pnpm build:deps && pnpm build:web && electron-builder",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "format": "biome format",
-    "lint": "biome lint",
-    "check": "biome check"
-  },
-  "dependencies": {
-    "@azurauto/adb": "workspace:*",
-    "@faker-js/faker": "^10.3.0",
-    "@t3-oss/env-core": "^0.13.10",
-    "@tailwindcss/vite": "^4.1.18",
-    "@tanstack/match-sorter-utils": "latest",
-    "@tanstack/react-devtools": "latest",
-    "@tanstack/react-form": "latest",
-    "@tanstack/react-query": "latest",
-    "@tanstack/react-query-devtools": "latest",
-    "@tanstack/react-router": "latest",
-    "@tanstack/react-router-devtools": "latest",
-    "@tanstack/react-router-ssr-query": "latest",
-    "@tanstack/react-start": "latest",
-    "@tanstack/react-table": "latest",
-    "@tanstack/router-plugin": "^1.132.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.577.0",
-    "nitro": "npm:nitro-nightly@latest",
-    "radix-ui": "^1.4.3",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "tailwind-merge": "^3.0.2",
-    "tailwindcss": "^4.1.18",
-    "tw-animate-css": "^1.3.6",
-    "zod": "^4.3.6"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "2.4.5",
-    "@tailwindcss/typography": "^0.5.16",
-    "@tanstack/devtools-vite": "latest",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/react": "^16.3.0",
-    "@types/node": "^22.10.2",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
-    "@vitejs/plugin-react": "^6.0.1",
-    "concurrently": "^10.0.1",
-    "cross-env": "^10.1.0",
-    "electron": "^42.3.0",
-    "electron-builder": "^26.0.12",
-    "jsdom": "^28.1.0",
-    "tsx": "^4.22.4",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0",
-    "vitest": "^4.1.5",
-    "wait-on": "^9.0.10"
-  },
-  "build": {
-    "appId": "com.azurauto.desktop",
-    "productName": "AzurAuto",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "electron/**/*",
-      "package.json"
-    ],
-    "extraResources": [
-      {
-        "from": ".output",
-        "to": ".output"
-      }
-    ],
-    "mac": {
-      "identity": null,
-      "target": [
-        "dmg",
-        "zip"
-      ]
-    },
-    "win": {
-      "target": [
-        "nsis"
-      ]
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ]
-    }
-  }
+	"name": "desktop",
+	"version": "0.1.0",
+	"description": "AzurAuto desktop app",
+	"author": "midolii",
+	"private": true,
+	"type": "module",
+	"main": "electron/main.ts",
+	"imports": {
+		"#/*": "./src/*"
+	},
+	"scripts": {
+		"dev:web": "vite dev --port 3000",
+		"dev:electron:only": "electron ./electron/main.ts",
+		"dev:electron": "node ./scripts/dev-electron.mjs",
+		"build:deps": "pnpm --filter @azurauto/adb build && pnpm --filter @azurauto/automation build",
+		"dev": "pnpm build:deps && pnpm dev:electron",
+		"build:web": "vite build",
+		"build": "pnpm build:web",
+		"build:app": "pnpm build:deps && pnpm build:web && electron-builder",
+		"preview": "vite preview",
+		"test": "vitest run",
+		"format": "biome format",
+		"lint": "biome lint",
+		"check": "biome check"
+	},
+	"dependencies": {
+		"@azurauto/adb": "workspace:*",
+		"@azurauto/automation": "workspace:*",
+		"@faker-js/faker": "^10.3.0",
+		"@t3-oss/env-core": "^0.13.10",
+		"@tailwindcss/vite": "^4.1.18",
+		"@tanstack/match-sorter-utils": "latest",
+		"@tanstack/react-devtools": "latest",
+		"@tanstack/react-form": "latest",
+		"@tanstack/react-query": "latest",
+		"@tanstack/react-query-devtools": "latest",
+		"@tanstack/react-router": "latest",
+		"@tanstack/react-router-devtools": "latest",
+		"@tanstack/react-router-ssr-query": "latest",
+		"@tanstack/react-start": "latest",
+		"@tanstack/react-table": "latest",
+		"@tanstack/router-plugin": "^1.132.0",
+		"class-variance-authority": "^0.7.1",
+		"clsx": "^2.1.1",
+		"lucide-react": "^0.577.0",
+		"nitro": "npm:nitro-nightly@latest",
+		"radix-ui": "^1.4.3",
+		"react": "^19.2.0",
+		"react-dom": "^19.2.0",
+		"tailwind-merge": "^3.0.2",
+		"tailwindcss": "^4.1.18",
+		"tw-animate-css": "^1.3.6",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.4.5",
+		"@tailwindcss/typography": "^0.5.16",
+		"@tanstack/devtools-vite": "latest",
+		"@testing-library/dom": "^10.4.1",
+		"@testing-library/react": "^16.3.0",
+		"@types/node": "^22.10.2",
+		"@types/react": "^19.2.0",
+		"@types/react-dom": "^19.2.0",
+		"@vitejs/plugin-react": "^6.0.1",
+		"concurrently": "^10.0.1",
+		"cross-env": "^10.1.0",
+		"electron": "^42.3.0",
+		"electron-builder": "^26.0.12",
+		"jsdom": "^28.1.0",
+		"tsx": "^4.22.4",
+		"typescript": "^6.0.2",
+		"vite": "^8.0.0",
+		"vitest": "^4.1.5",
+		"wait-on": "^9.0.10"
+	},
+	"build": {
+		"appId": "com.azurauto.desktop",
+		"productName": "AzurAuto",
+		"directories": {
+			"output": "release"
+		},
+		"files": [
+			"electron/**/*",
+			"package.json"
+		],
+		"extraResources": [
+			{
+				"from": ".output",
+				"to": ".output"
+			}
+		],
+		"mac": {
+			"identity": null,
+			"target": [
+				"dmg",
+				"zip"
+			]
+		},
+		"win": {
+			"target": [
+				"nsis"
+			]
+		},
+		"linux": {
+			"target": [
+				"AppImage"
+			]
+		}
+	}
 }

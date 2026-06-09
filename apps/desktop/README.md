@@ -1,245 +1,112 @@
-Welcome to your new TanStack Start app! 
+# AzurAuto Desktop
 
-# Getting Started
+AzurAuto Desktop 是基于 Electron、TanStack Start、React 和 Tailwind CSS 的桌面应用，用于连接 Android 模拟器并承载后续游戏自动化能力。
 
-To run this application:
+## 功能概览
+
+- 启动应用后自动检查本机 ADB 是否可用。
+- 自动识别已连接且状态为 `device` 的模拟器或 Android 设备。
+- 检查目标设备是否安装 ATX（小黄车自动化）组件。
+- 当 ATX 缺失时尝试自动安装，并在界面中展示当前状态、错误原因和重试入口。
+- 通过 Electron preload 暴露 `window.environment`，渲染层只读取环境状态，不直接访问原始 ADB/shell 能力。
+
+## 环境要求
+
+- Node.js 与 pnpm，版本以仓库根目录 `package.json` 的 `packageManager` 为准。
+- Android platform-tools，并确保 `adb` 可以在当前 shell 中执行。
+- 已启动的 Android 模拟器或已连接并授权的 Android 设备。
+- 可选：ATX 安装包路径，通过 `AZURAUTO_ATX_APK_PATH` 指定。
+
+```bash
+export AZURAUTO_ATX_APK_PATH=/absolute/path/to/atx.apk
+```
+
+如果未配置 ATX 安装包，应用仍会完成 ADB/设备检查；当设备缺少 ATX 时会进入可恢复的失败状态，并提示配置安装资源后重试。
+
+## 开发
+
+在仓库根目录安装依赖：
 
 ```bash
 pnpm install
+```
+
+启动桌面应用：
+
+```bash
+pnpm --filter desktop dev
+```
+
+也可以在 `apps/desktop` 目录下运行：
+
+```bash
 pnpm dev
 ```
 
-# Building For Production
+## 构建
 
-To build this application for production:
-
-```bash
-pnpm build
-```
-
-## Testing
-
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+构建 Web 渲染层：
 
 ```bash
-pnpm test
+pnpm --filter desktop build
 ```
 
-## Styling
-
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
-
-### Removing Tailwind CSS
-
-If you prefer not to use Tailwind CSS:
-
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `pnpm add @tailwindcss/vite tailwindcss --dev`
-
-## Linting & Formatting
-
-This project uses [Biome](https://biomejs.dev/) for linting and formatting. The following scripts are available:
-
+构建桌面安装包：
 
 ```bash
-pnpm lint
-pnpm format
-pnpm check
+pnpm --filter desktop build:app
 ```
 
+`build:app` 会先构建 workspace 依赖包，包括 `@azurauto/adb` 和 `@azurauto/automation`。
 
-## Deploy with Nitro
+## 测试与检查
 
-This project uses Nitro as a generic server adapter, so it can run on any Node-compatible host.
+运行 desktop 测试：
 
 ```bash
-npm run build
-node dist/server/index.mjs
+pnpm --filter desktop test
 ```
 
-The build output is a self-contained Node server. To deploy, push the `dist/` directory to your host (Render, Fly.io, your own VPS, etc.) and run the server command above.
-
-For host-specific presets (Vercel, Netlify, Cloudflare, AWS Lambda, etc.) and tuning, see https://v3.nitro.build/deploy.
-
-
-## Shadcn
-
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
+运行 ADB 与自动化包测试：
 
 ```bash
-pnpm dlx shadcn@latest add button
+pnpm --filter @azurauto/adb test
+pnpm --filter @azurauto/automation test
 ```
 
+运行 Biome：
 
-## T3Env
-
-- You can use T3Env to add type safety to your environment variables.
-- Add Environment variables to the `src/env.mjs` file.
-- Use the environment variables in your code.
-
-### Usage
-
-```ts
-import { env } from "#/env";
-
-console.log(env.VITE_APP_TITLE);
+```bash
+pnpm --filter desktop lint
+pnpm --filter desktop format
+pnpm --filter desktop check
 ```
 
+## Native / Preload API
 
+正式渲染层 API 挂载在 `window.environment`：
 
+- `getBootstrapStatus()`：读取当前 ADB/ATX bootstrap 状态。
+- `runBootstrap()`：手动重新执行环境检查和可恢复安装流程。
 
+当前不再保留测试用途的 `window.bot.tap`、`window.bot.swipe` 和 `window.bot.screenshot`。后续如果需要游戏截图、点击或滑动能力，应在自动化服务层设计稳定接口，再通过最小化 preload API 暴露给渲染层。
 
+## ADB/ATX 状态说明
 
-## Routing
+应用启动后会进入以下状态之一：
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+- `checking-adb`：正在检查 ADB 与设备列表。
+- `no-adb`：本机无法执行 ADB，需要安装或配置 Android platform-tools。
+- `no-device`：未发现可用设备，或设备处于 unauthorized/offline 状态。
+- `checking-atx`：已发现设备，正在检查 ATX。
+- `installing-atx`：设备缺少 ATX，正在尝试自动安装。
+- `ready`：ADB 设备和 ATX 均可用。
+- `failed`：自动检查或安装失败，可根据界面提示修复后重试。
 
-### Adding A Route
+## 目录说明
 
-To add a new route to your application just add a new file in the `./src/routes` directory.
-
-TanStack will automatically generate the content of the route file for you.
-
-Now that you have two routes you can use a `Link` component to navigate between them.
-
-### Adding Links
-
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
-
-```tsx
-import { Link } from "@tanstack/react-router";
-```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-  
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-  
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
+- `electron/`：Electron main、IPC、preload 和 native 编排代码。
+- `src/routes/`：TanStack Router 页面。
+- `src/types/`：渲染层全局类型声明。
+- `../../packages/adb`：项目自有 ADB 适配层，内部封装第三方 ADB 库。
+- `../../packages/automation`：设备 bootstrap、ATX 检测和安装编排服务。
