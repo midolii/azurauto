@@ -9,7 +9,7 @@
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
-		"fetch:scrcpy-server": "fetch-scrcpy-server 3.3.3",
+		"fetch:scrcpy-server": "node ./scripts/fetch-scrcpy-server.mjs",
 		"test": "vitest run"
 	},
 	"author": "midolii",

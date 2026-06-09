@@ -1,5 +1,5 @@
 import { ipcChannels } from "../contract/index.ts";
-import { clearLogEntries, getLogEntries } from "../../utils/global-logger.ts";
+import { clearLogEntries, getLogEntries } from "../../logging/global-logger.ts";
 import { handleIpc } from "./typed-handle.ts";
 
 export function registerLoggerIpcHandlers() {

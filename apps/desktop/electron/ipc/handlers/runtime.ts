@@ -1,6 +1,6 @@
 import type { DeviceBootstrapService } from "@azurauto/automation";
 import { ipcChannels, type ScriptRuntimeStatus } from "../contract/index.ts";
-import { logEntry } from "../../utils/global-logger.ts";
+import { logEntry } from "../../logging/global-logger.ts";
 import { handleIpc } from "./typed-handle.ts";
 
 let runtimeStatus = createRuntimeStatus("idle", "脚本未运行。", false);

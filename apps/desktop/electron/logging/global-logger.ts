@@ -2,6 +2,8 @@ import { BrowserWindow } from "electron";
 import type { LogEntry, LogLevel } from "../ipc/contract/index.ts";
 import { rendererEventChannels } from "../ipc/contract/index.ts";
 
+// 主进程日志中心：保留最近日志并广播给所有 renderer，用于 UI 日志面板和调试输出。
+
 const entries: LogEntry[] = [];
 const maxEntries = 500;
 

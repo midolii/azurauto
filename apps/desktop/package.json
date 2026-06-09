@@ -19,7 +19,7 @@
     "build:deps": "pnpm --filter @azurauto/adb build && pnpm --filter @azurauto/automation build",
     "build:preload": "node ./scripts/build-preload.mjs",
     "fetch:scrcpy-server": "pnpm --filter @azurauto/adb fetch:scrcpy-server",
-    "prepare:android-resources": "pnpm fetch:scrcpy-server && node ./scripts/prepare-android-resources.mjs",
+    "prepare:android-resources": "node ./scripts/prepare-android-resources.mjs",
     "build": "pnpm build:preload && pnpm build:web",
     "build:app": "pnpm build:deps && pnpm prepare:android-resources && pnpm build:preload && pnpm build:web && electron-builder",
     "preview": "vite preview",

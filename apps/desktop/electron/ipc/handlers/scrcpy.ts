@@ -6,7 +6,7 @@ import {
 } from "@azurauto/adb";
 import type { DeviceBootstrapService } from "@azurauto/automation";
 import type { WebContents } from "electron";
-import type { AndroidResources } from "../../utils/android-resources.ts";
+import type { AndroidResources } from "../../resources/android-resources.ts";
 import {
 	ipcChannels,
 	rendererEventChannels,

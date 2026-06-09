@@ -1,7 +1,7 @@
 import type { BootstrapStatus, ScreenshotFrame } from "@azurauto/automation";
-import type { StartupResourceStatus } from "../../utils/resource-preparation.ts";
+import type { StartupResourceStatus } from "../../resources/resource-preparation.ts";
 
-export type { StartupResourceStatus } from "../../utils/resource-preparation.ts";
+export type { StartupResourceStatus } from "../../resources/resource-preparation.ts";
 
 export type EnvironmentIpcContract = {
 	"environment:getBootstrapStatus": {

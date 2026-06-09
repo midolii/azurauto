@@ -1,6 +1,6 @@
 import type { DeviceBootstrapService } from "@azurauto/automation";
-import type { AndroidResources } from "../../utils/android-resources.ts";
-import type { ResourcePreparationService } from "../../utils/resource-preparation.ts";
+import type { AndroidResources } from "../../resources/android-resources.ts";
+import type { ResourcePreparationService } from "../../resources/resource-preparation.ts";
 import { registerEnvironmentIpcHandlers } from "./environment.ts";
 import { registerLoggerIpcHandlers } from "./logger.ts";
 import {

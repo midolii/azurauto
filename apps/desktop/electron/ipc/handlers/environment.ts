@@ -1,5 +1,5 @@
 import type { DeviceBootstrapService } from "@azurauto/automation";
-import type { ResourcePreparationService } from "../../utils/resource-preparation.ts";
+import type { ResourcePreparationService } from "../../resources/resource-preparation.ts";
 import { ipcChannels } from "../contract/index.ts";
 import { handleIpc } from "./typed-handle.ts";
 
