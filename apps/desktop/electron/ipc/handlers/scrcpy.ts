@@ -1,21 +1,19 @@
 import {
 	EmbeddedScrcpyClient,
-	type EmbeddedScrcpyVideoPacket,
-	type EmbeddedScrcpyVideoMetadata,
 	type EmbeddedScrcpySession,
+	type EmbeddedScrcpyVideoMetadata,
+	type EmbeddedScrcpyVideoPacket,
 } from "@azurauto/adb";
 import type { DeviceBootstrapService } from "@azurauto/automation";
-import { type IpcMainInvokeEvent, type WebContents, ipcMain } from "electron";
-import type { AndroidResources } from "../utils/android-resources.ts";
+import type { WebContents } from "electron";
+import type { AndroidResources } from "../../utils/android-resources.ts";
 import {
-	type IpcChannel,
-	type IpcInvokeArgs,
-	type IpcResult,
-	type ScrcpyPreviewConfig,
-	type ScrcpyVideoEvent,
 	ipcChannels,
 	rendererEventChannels,
-} from "./contract.ts";
+	type ScrcpyPreviewConfig,
+	type ScrcpyVideoEvent,
+} from "../contract/index.ts";
+import { handleIpc } from "./typed-handle.ts";
 
 let embeddedScrcpy = new EmbeddedScrcpyClient({
 	serverPath: process.env.AZURAUTO_SCRCPY_SERVER_PATH,
@@ -28,54 +26,17 @@ let scrcpyStreamReader:
 	| undefined;
 let scrcpyStatusMessage = "scrcpy 预览未启动。";
 
-type IpcHandler<Channel extends IpcChannel> = (
-	event: IpcMainInvokeEvent,
-	...args: IpcInvokeArgs<Channel>
-) => IpcResult<Channel> | Promise<IpcResult<Channel>>;
-
 /**
- * Typed wrapper around ipcMain.handle.
- * ipcMain.handle 的类型安全包装器。
- *
- * Electron's native ipcMain.handle accepts string channels and unknown args.
- * This helper binds the channel to IpcContract so handler payload/result types
- * stay synchronized with preload calls.
- * Electron 原生 ipcMain.handle 接收字符串 channel 和未知参数。
- * 这个辅助函数会把 channel 绑定到 IpcContract，保证 handler 参数和返回值与 preload 调用保持同步。
+ * scrcpy IPC 模块负责主进程 native 预览生命周期和 renderer 视频事件转发。
+ * Electron IPC 只做编排，实际 ADB/scrcpy 协议能力由 packages/adb 提供。
  */
-function handleIpc<Channel extends IpcChannel>(
-	channel: Channel,
-	handler: IpcHandler<Channel>,
-) {
-	ipcMain.handle(channel, (event, ...args) => {
-		return handler(event, ...(args as IpcInvokeArgs<Channel>));
-	});
-}
-
-/**
- * Register all main-process IPC handlers.
- * 注册所有主进程 IPC handlers。
- */
-export function registerIpcHandlers(
+export function registerScrcpyIpcHandlers(
 	bootstrapService: DeviceBootstrapService,
 	resources?: AndroidResources,
 ) {
 	embeddedScrcpy = new EmbeddedScrcpyClient({
 		serverPath:
 			process.env.AZURAUTO_SCRCPY_SERVER_PATH ?? resources?.scrcpyServerPath,
-	});
-
-	// IPC 只暴露环境状态和重试入口，不再暴露测试用 tap/swipe/screenshot native 方法。
-	handleIpc(ipcChannels.environmentGetBootstrapStatus, async () => {
-		return bootstrapService.getStatus();
-	});
-
-	handleIpc(ipcChannels.environmentRunBootstrap, async () => {
-		return bootstrapService.run();
-	});
-
-	handleIpc(ipcChannels.environmentCaptureScreenshot, async () => {
-		return bootstrapService.captureScreenshot();
 	});
 
 	handleIpc(ipcChannels.scrcpyStartPreview, async (event, config) => {
@@ -103,6 +64,14 @@ export function registerIpcHandlers(
 	handleIpc(ipcChannels.scrcpyGetPreviewStatus, async () => {
 		return getScrcpyStatus(bootstrapService.getStatus().serial);
 	});
+}
+
+/**
+ * 应用退出前统一释放 native 预览资源。
+ * 防止 scrcpy 视频流、ADB socket 或设备端进程句柄让 Electron 关闭窗口后仍停留在任务栏/Dock。
+ */
+export async function cleanupScrcpyIpcResources() {
+	await stopEmbeddedScrcpy("应用正在退出，已停止 scrcpy 预览。");
 }
 
 function getScrcpyStatus(serial?: string) {

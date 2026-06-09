@@ -8,7 +8,7 @@ import {
 	WebGLVideoFrameRenderer,
 } from "@yume-chan/scrcpy-decoder-webcodecs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ScrcpyPreviewStatus } from "../../../../../electron/ipc/contract.ts";
+import type { ScrcpyPreviewStatus } from "../../../../../electron/ipc/contract/index.ts";
 import type { PreviewSource } from "../utils/options";
 
 export function useScrcpyPreview({
@@ -95,8 +95,7 @@ export function useScrcpyPreview({
 						: new BitmapVideoFrameRenderer();
 					renderer.setSize(event.metadata.width, event.metadata.height);
 					const canvas = renderer.canvas as HTMLCanvasElement;
-					canvas.className =
-						"mx-auto h-full max-h-[620px] w-full object-contain";
+					canvas.className = "mx-auto h-full max-h-155 w-full object-contain";
 					host.appendChild(canvas);
 					setIsScrcpyCanvasReady(true);
 

@@ -4,7 +4,7 @@ import {
 	type IpcInvokeArgs,
 	type IpcResult,
 	ipcChannels,
-} from "../ipc/contract.ts";
+} from "../ipc/contract/index.ts";
 
 function invoke<Channel extends IpcChannel>(
 	channel: Channel,

@@ -12,8 +12,8 @@ function Home() {
 		<div className="min-h-screen bg-slate-950 p-6 text-slate-100">
 			<main className="mx-auto max-w-6xl space-y-6">
 				<header className="space-y-2">
-					<p className="text-sm text-cyan-300">AzurAuto Desktop</p>
-					<h1 className="text-2xl font-bold">自动化环境检查</h1>
+					<p className="text-cyan-300 text-sm">AzurAuto Desktop</p>
+					<h1 className="font-bold text-2xl">自动化环境检查</h1>
 					<p className="text-slate-400">
 						打开应用后会自动检查模拟器 ADB 和
 						ATX（小黄车自动化）组件，环境就绪后才能运行后续游戏自动化能力。

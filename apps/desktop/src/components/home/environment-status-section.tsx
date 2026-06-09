@@ -22,15 +22,15 @@ export function EnvironmentStatusSection({
 					>
 						{phaseCopy.label}
 					</span>
-					<h2 className="text-lg font-semibold">
+					<h2 className="font-semibold text-lg">
 						{status?.message ?? "正在读取环境状态..."}
 					</h2>
-					<p className="text-sm text-slate-400">{phaseCopy.description}</p>
+					<p className="text-slate-400 text-sm">{phaseCopy.description}</p>
 				</div>
 
 				<button
 					type="button"
-					className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+					className="rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 text-sm disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
 					disabled={!status?.recoverable || isRetrying}
 					onClick={onRetry}
 				>
@@ -52,7 +52,7 @@ export function EnvironmentStatusSection({
 			</dl>
 
 			{status?.nextAction ? (
-				<div className="mt-5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-sm text-cyan-100">
+				<div className="mt-5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-cyan-100 text-sm">
 					下一步：{status.nextAction}
 				</div>
 			) : null}

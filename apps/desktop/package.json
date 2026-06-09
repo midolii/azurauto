@@ -44,7 +44,6 @@
     "@tanstack/react-start": "latest",
     "@tanstack/react-table": "latest",
     "@tanstack/router-plugin": "^1.132.0",
-    "@yume-chan/scrcpy": "^2.3.0",
     "@yume-chan/scrcpy-decoder-webcodecs": "^2.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -59,7 +58,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.5",
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "latest",
     "@testing-library/dom": "^10.4.1",
@@ -69,6 +67,7 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@yume-chan/fetch-scrcpy-server": "^1.0.0",
+    "@yume-chan/scrcpy": "^2.3.0",
     "concurrently": "^10.0.1",
     "cross-env": "^10.1.0",
     "electron": "^42.3.0",

@@ -1,0 +1,44 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": false,
+		"clientKind": "git",
+		"useIgnoreFile": false
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"apps/desktop/src/**/*",
+			"apps/desktop/.vscode/**/*",
+			"apps/desktop/index.html",
+			"apps/desktop/vite.config.ts",
+			"!apps/desktop/src/routeTree.gen.ts",
+			"!apps/desktop/src/styles.css"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab"
+	},
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"nursery": {
+				"useSortedClasses": {
+					"level": "error",
+					"fix": "unsafe",
+					"options": {
+						"functions": ["cn", "clsx", "cva", "tw", "tw.*"]
+					}
+				}
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "double"
+		}
+	}
+}

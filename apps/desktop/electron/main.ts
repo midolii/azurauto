@@ -7,7 +7,7 @@ import {
 } from "@azurauto/automation";
 import { DeviceBootstrapService } from "@azurauto/automation";
 import { app, BrowserWindow } from "electron";
-import { registerIpcHandlers } from "./ipc/handlers.ts";
+import { cleanupIpcResources, registerIpcHandlers } from "./ipc/handlers/index.ts";
 import { resolveAndroidResources } from "./utils/android-resources.ts";
 import { RendererServerManager } from "./utils/renderer-server.ts";
 
@@ -16,6 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 let mainWindow: Electron.BrowserWindow | null = null;
 const rendererServer = new RendererServerManager(app);
 let bootstrapService: DeviceBootstrapService;
+let isRunningQuitCleanup = false;
 
 /**
  * Create the main application window and load the renderer URL.
@@ -72,11 +73,25 @@ async function createMainWindow() {
 app.whenReady().then(createMainWindow);
 
 app.on("window-all-closed", () => {
-	if (process.platform !== "darwin") {
-		app.quit();
-	}
+	// AzurAuto 是任务型桌面工具：关闭最后一个窗口即彻底退出，不保留 macOS Dock 后台实例。
+	app.quit();
 });
 
-app.on("before-quit", () => {
-	rendererServer.stop();
+app.on("before-quit", (event) => {
+	if (isRunningQuitCleanup) {
+		return;
+	}
+
+	event.preventDefault();
+	isRunningQuitCleanup = true;
+
+	void shutdownNativeResources().finally(() => {
+		app.quit();
+	});
 });
+
+async function shutdownNativeResources() {
+	// 退出状态转换：先停设备/预览资源，再停内置 renderer server，避免残留后台句柄。
+	await cleanupIpcResources();
+	rendererServer.stop();
+}

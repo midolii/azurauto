@@ -52,15 +52,15 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 					<span className="inline-flex rounded-full bg-violet-500/15 px-3 py-1 text-sm text-violet-300">
 						实时预览
 					</span>
-					<h2 className="text-lg font-semibold">模拟器实时画面</h2>
-					<p className="text-sm text-slate-400">
+					<h2 className="font-semibold text-lg">模拟器实时画面</h2>
+					<p className="text-slate-400 text-sm">
 						scrcpy 用于低延迟预览；uiautomator2
 						保留给自动化识别，并按上一帧完成后请求下一帧。
 					</p>
 				</div>
 
 				<div className="flex flex-wrap gap-2">
-					<label className="flex items-center gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
+					<label className="flex items-center gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-slate-300 text-sm">
 						<span className="text-slate-500">FPS</span>
 						<select
 							className="bg-transparent text-slate-100 outline-none disabled:text-slate-500"
@@ -77,7 +77,7 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 							))}
 						</select>
 					</label>
-					<label className="flex items-center gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-sm text-slate-300">
+					<label className="flex items-center gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-slate-300 text-sm">
 						<span className="text-slate-500">分辨率</span>
 						<select
 							className="bg-transparent text-slate-100 outline-none disabled:text-slate-500"
@@ -96,21 +96,21 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 					</label>
 					<button
 						type="button"
-						className={`rounded-lg px-4 py-2 text-sm font-medium ${previewSource === "scrcpy" ? "bg-violet-500 text-white" : "bg-slate-800 text-slate-300"}`}
+						className={`rounded-lg px-4 py-2 font-medium text-sm ${previewSource === "scrcpy" ? "bg-violet-500 text-white" : "bg-slate-800 text-slate-300"}`}
 						onClick={() => selectPreviewSource("scrcpy")}
 					>
 						scrcpy
 					</button>
 					<button
 						type="button"
-						className={`rounded-lg px-4 py-2 text-sm font-medium ${previewSource === "uiautomator2" ? "bg-violet-500 text-white" : "bg-slate-800 text-slate-300"}`}
+						className={`rounded-lg px-4 py-2 font-medium text-sm ${previewSource === "uiautomator2" ? "bg-violet-500 text-white" : "bg-slate-800 text-slate-300"}`}
 						onClick={() => selectPreviewSource("uiautomator2")}
 					>
 						uiautomator2
 					</button>
 					<button
 						type="button"
-						className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+						className="rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 text-sm disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
 						disabled={!canStream || scrcpy.isScrcpyBusy}
 						onClick={
 							isUiautomator2Source
@@ -198,7 +198,7 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 			) : null}
 
 			{streamError ? (
-				<div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">
+				<div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-100 text-sm">
 					{streamError}
 				</div>
 			) : null}
