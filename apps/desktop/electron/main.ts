@@ -28,7 +28,6 @@ app.setName(APP_NAME);
 if (app.isPackaged) {
 	Menu.setApplicationMenu(createPackagedApplicationMenu());
 }
-
 if (process.platform === "win32") {
 	app.setAppUserModelId(APP_ID);
 }
@@ -76,6 +75,7 @@ async function createMainWindow() {
 	});
 
 	mainWindow = new BrowserWindow({
+		title: APP_NAME,
 		width: 1280,
 		height: 720,
 		minWidth: 1024,

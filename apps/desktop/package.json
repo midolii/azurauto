@@ -81,8 +81,9 @@
     "wait-on": "^9.0.10"
   },
   "build": {
-    "appId": "com.azurauto.desktop",
-    "productName": "AzurAuto",
+    "appId": "net.midolii.azurauto",
+    "productName": "azurauto",
+    "executableName": "azurauto",
     "directories": {
       "output": "release"
     },
@@ -102,6 +103,10 @@
     ],
     "mac": {
       "identity": null,
+      "extendInfo": {
+        "CFBundleName": "azurauto",
+        "CFBundleDisplayName": "azurauto"
+      },
       "target": [
         "dmg",
         "zip"
