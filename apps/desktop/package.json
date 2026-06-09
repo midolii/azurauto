@@ -17,8 +17,10 @@
     "build:web": "vite build",
     "build:deps": "pnpm --filter @azurauto/adb build && pnpm --filter @azurauto/automation build",
     "build:preload": "node ./scripts/build-preload.mjs",
+    "fetch:scrcpy-server": "pnpm --filter @azurauto/adb fetch:scrcpy-server",
+    "prepare:android-resources": "pnpm fetch:scrcpy-server && node ./scripts/prepare-android-resources.mjs",
     "build": "pnpm build:preload && pnpm build:web",
-    "build:app": "pnpm build:deps && pnpm build:preload && pnpm build:web && electron-builder",
+    "build:app": "pnpm build:deps && pnpm prepare:android-resources && pnpm build:preload && pnpm build:web && electron-builder",
     "preview": "vite preview",
     "test": "vitest run",
     "format": "biome format",
@@ -42,6 +44,8 @@
     "@tanstack/react-start": "latest",
     "@tanstack/react-table": "latest",
     "@tanstack/router-plugin": "^1.132.0",
+    "@yume-chan/scrcpy": "^2.3.0",
+    "@yume-chan/scrcpy-decoder-webcodecs": "^2.5.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
@@ -64,11 +68,13 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.0.1",
+    "@yume-chan/fetch-scrcpy-server": "^1.0.0",
     "concurrently": "^10.0.1",
     "cross-env": "^10.1.0",
     "electron": "^42.3.0",
     "electron-builder": "^26.0.12",
     "esbuild": "^0.28.0",
+    "extract-zip": "^2.0.1",
     "jsdom": "^28.1.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.2",
@@ -90,6 +96,10 @@
       {
         "from": ".output",
         "to": ".output"
+      },
+      {
+        "from": "resources/android",
+        "to": "android"
       }
     ],
     "mac": {

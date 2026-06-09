@@ -1,7 +1,11 @@
-import type { EnvironmentApi } from "../../electron/preload/index.ts";
+import type {
+	EnvironmentApi,
+	ScrcpyApi,
+} from "../../electron/preload/index.ts";
 
 declare global {
 	interface Window {
 		environment: EnvironmentApi;
+		scrcpy: ScrcpyApi;
 	}
 }

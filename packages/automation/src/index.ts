@@ -222,12 +222,14 @@ export class DeviceBootstrapService {
 export type Uiautomator2ScreenshotSourceOptions = {
 	jsonRpcPort?: number;
 	localPort?: number;
+	jarPath?: string;
 	requestTimeoutMs?: number;
 };
 
 export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	private readonly jsonRpcPort: number;
 	private readonly localPort: number;
+	private readonly jarPath?: string;
 	private readonly requestTimeoutMs: number;
 	private forwardedSerial?: string;
 
@@ -238,6 +240,7 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 		this.jsonRpcPort = options.jsonRpcPort ?? 9008;
 		this.localPort =
 			options.localPort ?? Number(process.env.AZURAUTO_U2_LOCAL_PORT ?? 19008);
+		this.jarPath = options.jarPath;
 		this.requestTimeoutMs = options.requestTimeoutMs ?? 3000;
 	}
 
@@ -279,11 +282,33 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 	}
 
 	private async startJsonRpcServer(serial: string) {
-		// python uiautomator2 会把 u2.jar 放到 /data/local/tmp；这里直接启动设备端 JSON-RPC server。
+		await this.ensureUiautomator2Jar(serial);
+
+		// 设备端 u2.jar 准备完成后，启动 JSON-RPC server。
 		await this.adb.shell(
 			serial,
 			"CLASSPATH=/data/local/tmp/u2.jar app_process / com.wetest.uia2.Main >/dev/null 2>&1 &",
 		);
+	}
+
+	private async ensureUiautomator2Jar(serial: string) {
+		const result = await this.adb.shell(
+			serial,
+			"test -f /data/local/tmp/u2.jar && echo present || echo missing",
+		);
+		if (result.stdout.trim() === "present") {
+			return;
+		}
+
+		if (!this.jarPath || !existsSync(this.jarPath)) {
+			throw new DeviceBootstrapError(
+				"UNKNOWN",
+				"未找到 uiautomator2 u2.jar，请将 u2.jar 放入应用资源目录或设置打包资源。",
+				true,
+			);
+		}
+
+		await this.adb.pushFile(serial, this.jarPath, "/data/local/tmp/u2.jar");
 	}
 
 	private async waitForJsonRpc() {
@@ -298,7 +323,7 @@ export class Uiautomator2ScreenshotSource implements ScreenshotSource {
 
 		throw new DeviceBootstrapError(
 			"UNKNOWN",
-			"uiautomator2 JSON-RPC 服务启动失败，请先运行 python -m uiautomator2 init。",
+			"uiautomator2 JSON-RPC 服务启动失败，请确认应用资源中的 u2.jar 可用。",
 			true,
 		);
 	}

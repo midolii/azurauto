@@ -17,21 +17,12 @@ export type EnvironmentApi = {
 	getBootstrapStatus(): Promise<IpcResult<"environment:getBootstrapStatus">>;
 	runBootstrap(): Promise<IpcResult<"environment:runBootstrap">>;
 	captureScreenshot(): Promise<IpcResult<"environment:captureScreenshot">>;
-	startScrcpyPreview(): Promise<IpcResult<"environment:startScrcpyPreview">>;
-	stopScrcpyPreview(): Promise<IpcResult<"environment:stopScrcpyPreview">>;
-	getScrcpyPreviewStatus(): Promise<
-		IpcResult<"environment:getScrcpyPreviewStatus">
-	>;
 };
 
 const environment: EnvironmentApi = {
 	getBootstrapStatus: () => invoke(ipcChannels.environmentGetBootstrapStatus),
 	runBootstrap: () => invoke(ipcChannels.environmentRunBootstrap),
 	captureScreenshot: () => invoke(ipcChannels.environmentCaptureScreenshot),
-	startScrcpyPreview: () => invoke(ipcChannels.environmentStartScrcpyPreview),
-	stopScrcpyPreview: () => invoke(ipcChannels.environmentStopScrcpyPreview),
-	getScrcpyPreviewStatus: () =>
-		invoke(ipcChannels.environmentGetScrcpyPreviewStatus),
 };
 
 /**

@@ -9,11 +9,18 @@
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
+		"fetch:scrcpy-server": "fetch-scrcpy-server 3.3.3",
 		"test": "vitest run"
 	},
 	"author": "midolii",
 	"dependencies": {
-		"@devicefarmer/adbkit": "^3.3.8"
+		"@devicefarmer/adbkit": "^3.3.8",
+		"@yume-chan/adb": "^2.6.0",
+		"@yume-chan/adb-scrcpy": "^2.3.2",
+		"@yume-chan/adb-server-node-tcp": "^2.5.2",
+		"@yume-chan/fetch-scrcpy-server": "^1.0.0",
+		"@yume-chan/scrcpy": "^2.3.0",
+		"@yume-chan/stream-extra": "^2.5.3"
 	},
 	"devDependencies": {
 		"vitest": "^4.1.5"

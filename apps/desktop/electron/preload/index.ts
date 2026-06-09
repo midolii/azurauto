@@ -1,4 +1,5 @@
 import { registerEnvironmentPreload } from "./environment.ts";
+import { registerScrcpyPreload } from "./scrcpy.ts";
 
 /**
  * Electron 只有一个 preload 入口，这里统一注册各领域的 native bridge。
@@ -7,5 +8,7 @@ import { registerEnvironmentPreload } from "./environment.ts";
  * 构建脚本会把它打包为 dist/index.cjs，Electron 只加载打包产物。
  */
 registerEnvironmentPreload();
+registerScrcpyPreload();
 
 export type { EnvironmentApi } from "./environment.ts";
+export type { ScrcpyApi } from "./scrcpy.ts";

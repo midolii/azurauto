@@ -1,14 +1,31 @@
-import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import {
+	EmbeddedScrcpyClient,
+	type EmbeddedScrcpyVideoPacket,
+	type EmbeddedScrcpyVideoMetadata,
+	type EmbeddedScrcpySession,
+} from "@azurauto/adb";
 import type { DeviceBootstrapService } from "@azurauto/automation";
-import { type IpcMainInvokeEvent, ipcMain } from "electron";
+import { type IpcMainInvokeEvent, type WebContents, ipcMain } from "electron";
+import type { AndroidResources } from "../utils/android-resources.ts";
 import {
 	type IpcChannel,
 	type IpcInvokeArgs,
 	type IpcResult,
+	type ScrcpyPreviewConfig,
+	type ScrcpyVideoEvent,
 	ipcChannels,
+	rendererEventChannels,
 } from "./contract.ts";
 
-let scrcpyProcess: ChildProcessWithoutNullStreams | undefined;
+let embeddedScrcpy = new EmbeddedScrcpyClient({
+	serverPath: process.env.AZURAUTO_SCRCPY_SERVER_PATH,
+});
+let scrcpyStreamReader:
+	| {
+			read(): Promise<{ done: boolean; value?: EmbeddedScrcpyVideoPacket }>;
+			cancel(): Promise<void>;
+	  }
+	| undefined;
 let scrcpyStatusMessage = "scrcpy 预览未启动。";
 
 type IpcHandler<Channel extends IpcChannel> = (
@@ -39,7 +56,15 @@ function handleIpc<Channel extends IpcChannel>(
  * Register all main-process IPC handlers.
  * 注册所有主进程 IPC handlers。
  */
-export function registerIpcHandlers(bootstrapService: DeviceBootstrapService) {
+export function registerIpcHandlers(
+	bootstrapService: DeviceBootstrapService,
+	resources?: AndroidResources,
+) {
+	embeddedScrcpy = new EmbeddedScrcpyClient({
+		serverPath:
+			process.env.AZURAUTO_SCRCPY_SERVER_PATH ?? resources?.scrcpyServerPath,
+	});
+
 	// IPC 只暴露环境状态和重试入口，不再暴露测试用 tap/swipe/screenshot native 方法。
 	handleIpc(ipcChannels.environmentGetBootstrapStatus, async () => {
 		return bootstrapService.getStatus();
@@ -53,71 +78,136 @@ export function registerIpcHandlers(bootstrapService: DeviceBootstrapService) {
 		return bootstrapService.captureScreenshot();
 	});
 
-	handleIpc(ipcChannels.environmentStartScrcpyPreview, async () => {
+	handleIpc(ipcChannels.scrcpyStartPreview, async (event, config) => {
 		const status = bootstrapService.getStatus();
 		if (status.phase !== "ready" || !status.serial) {
 			throw new Error("自动化环境未就绪，无法启动 scrcpy 预览。");
 		}
 
-		if (scrcpyProcess && !scrcpyProcess.killed) {
+		if (embeddedScrcpy.running) {
 			return getScrcpyStatus(status.serial);
 		}
 
-		// scrcpy 负责真正的低延迟实时画面；当前阶段先由主进程托管外部预览窗口。
-		scrcpyProcess = spawn("scrcpy", [
-			"-s",
-			status.serial,
-			"--no-audio",
-			"--no-control",
-			"--video-codec=h264",
-			"--max-fps=60",
-			"--video-bit-rate=8M",
-			"--window-title",
-			"AzurAuto scrcpy preview",
-		]);
-		scrcpyStatusMessage = "scrcpy 预览启动中。";
-
-		scrcpyProcess.once("spawn", () => {
-			scrcpyStatusMessage = "scrcpy 预览运行中。";
-		});
-		scrcpyProcess.once("error", (error) => {
-			scrcpyStatusMessage = `scrcpy 启动失败：${error.message}`;
-			scrcpyProcess = undefined;
-		});
-		scrcpyProcess.once("close", (code) => {
-			scrcpyStatusMessage = `scrcpy 预览已退出${code === null ? "" : `，退出码 ${code}`}。`;
-			scrcpyProcess = undefined;
-		});
-		scrcpyProcess.stderr.on("data", (chunk) => {
-			const message = chunk.toString().trim();
-			if (message) {
-				scrcpyStatusMessage = message;
-			}
-		});
+		scrcpyStatusMessage = "正在通过 @yume-chan/scrcpy 启动内嵌预览。";
+		await startEmbeddedScrcpy(status.serial, event.sender, config);
 
 		return getScrcpyStatus(status.serial);
 	});
 
-	handleIpc(ipcChannels.environmentStopScrcpyPreview, async () => {
-		if (scrcpyProcess && !scrcpyProcess.killed) {
-			scrcpyProcess.kill("SIGTERM");
-			scrcpyStatusMessage = "正在停止 scrcpy 预览。";
-		}
+	handleIpc(ipcChannels.scrcpyStopPreview, async () => {
+		await stopEmbeddedScrcpy("正在停止 scrcpy 预览。");
 
 		return getScrcpyStatus(bootstrapService.getStatus().serial);
 	});
 
-	handleIpc(ipcChannels.environmentGetScrcpyPreviewStatus, async () => {
+	handleIpc(ipcChannels.scrcpyGetPreviewStatus, async () => {
 		return getScrcpyStatus(bootstrapService.getStatus().serial);
 	});
 }
 
 function getScrcpyStatus(serial?: string) {
 	return {
-		running: Boolean(scrcpyProcess && !scrcpyProcess.killed),
-		pid: scrcpyProcess?.pid,
+		running: embeddedScrcpy.running,
 		serial,
 		message: scrcpyStatusMessage,
 		updatedAt: new Date().toISOString(),
 	};
+}
+
+async function startEmbeddedScrcpy(
+	serial: string,
+	webContents: WebContents,
+	config: ScrcpyPreviewConfig,
+) {
+	try {
+		const session = await embeddedScrcpy.start(serial, {
+			maxFps: config.maxFps,
+			maxSize: config.maxSize,
+		});
+		scrcpyStatusMessage = "scrcpy 内嵌预览运行中。";
+		sendScrcpyMetadata(webContents, session.metadata);
+
+		void pumpScrcpyVideoStream(session, webContents);
+	} catch (error) {
+		await embeddedScrcpy.stop();
+		scrcpyStatusMessage = `scrcpy 内嵌预览启动失败：${formatError(error)}`;
+		sendScrcpyVideoEvent(webContents, {
+			type: "error",
+			message: scrcpyStatusMessage,
+		});
+		throw error;
+	}
+}
+
+async function pumpScrcpyVideoStream(
+	session: EmbeddedScrcpySession,
+	webContents: WebContents,
+) {
+	const reader = session.stream.getReader();
+	scrcpyStreamReader = reader;
+
+	try {
+		while (embeddedScrcpy.running) {
+			const result = await reader.read();
+			if (result.done) {
+				break;
+			}
+			if (!result.value) {
+				continue;
+			}
+
+			sendScrcpyVideoEvent(webContents, {
+				type: "packet",
+				packet: result.value,
+			});
+		}
+	} catch (error) {
+		scrcpyStatusMessage = `scrcpy 视频流异常：${formatError(error)}`;
+		sendScrcpyVideoEvent(webContents, {
+			type: "error",
+			message: scrcpyStatusMessage,
+		});
+	} finally {
+		scrcpyStreamReader = undefined;
+		await stopEmbeddedScrcpy("scrcpy 内嵌预览已停止。", webContents);
+	}
+}
+
+async function stopEmbeddedScrcpy(message: string, webContents?: WebContents) {
+	scrcpyStatusMessage = message;
+	const reader = scrcpyStreamReader;
+	scrcpyStreamReader = undefined;
+
+	try {
+		await reader?.cancel();
+	} catch {
+		// 流关闭期间可能已经被 scrcpy server 主动断开，忽略二次取消错误。
+	}
+
+	try {
+		await embeddedScrcpy.stop();
+	} catch {
+		// 关闭流程用于错误恢复，设备侧连接已断开时不再覆盖原状态信息。
+	}
+
+	if (webContents && !webContents.isDestroyed()) {
+		sendScrcpyVideoEvent(webContents, { type: "closed", message });
+	}
+}
+
+function sendScrcpyMetadata(
+	webContents: WebContents,
+	metadata: EmbeddedScrcpyVideoMetadata,
+) {
+	sendScrcpyVideoEvent(webContents, { type: "metadata", metadata });
+}
+
+function sendScrcpyVideoEvent(webContents: WebContents, event: ScrcpyVideoEvent) {
+	if (!webContents.isDestroyed()) {
+		webContents.send(rendererEventChannels.scrcpyVideoEvent, event);
+	}
+}
+
+function formatError(error: unknown) {
+	return error instanceof Error ? error.message : String(error);
 }

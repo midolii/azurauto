@@ -1,12 +1,42 @@
 import type { BootstrapStatus, ScreenshotFrame } from "@azurauto/automation";
+import type {
+	EmbeddedScrcpyVideoMetadata,
+	EmbeddedScrcpyVideoPacket,
+} from "@azurauto/adb";
 
 export type ScrcpyPreviewStatus = {
 	running: boolean;
-	pid?: number;
 	serial?: string;
 	message: string;
 	updatedAt: string;
 };
+
+export type ScrcpyPreviewConfig = {
+	maxFps: number;
+	maxSize: number;
+};
+
+export type ScrcpyVideoMetadata = EmbeddedScrcpyVideoMetadata;
+
+export type ScrcpyVideoPacket = EmbeddedScrcpyVideoPacket;
+
+export type ScrcpyVideoEvent =
+	| {
+			type: "metadata";
+			metadata: ScrcpyVideoMetadata;
+	  }
+	| {
+			type: "packet";
+			packet: ScrcpyVideoPacket;
+	  }
+	| {
+			type: "error";
+			message: string;
+	  }
+	| {
+			type: "closed";
+			message: string;
+	  };
 
 /**
  * Shared IPC contract used by both the Electron main process and preload script.
@@ -26,13 +56,14 @@ export type IpcContract = {
 	"environment:captureScreenshot": {
 		result: ScreenshotFrame;
 	};
-	"environment:startScrcpyPreview": {
+	"scrcpy:startPreview": {
+		payload: ScrcpyPreviewConfig;
 		result: ScrcpyPreviewStatus;
 	};
-	"environment:stopScrcpyPreview": {
+	"scrcpy:stopPreview": {
 		result: ScrcpyPreviewStatus;
 	};
-	"environment:getScrcpyPreviewStatus": {
+	"scrcpy:getPreviewStatus": {
 		result: ScrcpyPreviewStatus;
 	};
 };
@@ -45,10 +76,14 @@ export const ipcChannels = {
 	environmentGetBootstrapStatus: "environment:getBootstrapStatus",
 	environmentRunBootstrap: "environment:runBootstrap",
 	environmentCaptureScreenshot: "environment:captureScreenshot",
-	environmentStartScrcpyPreview: "environment:startScrcpyPreview",
-	environmentStopScrcpyPreview: "environment:stopScrcpyPreview",
-	environmentGetScrcpyPreviewStatus: "environment:getScrcpyPreviewStatus",
+	scrcpyStartPreview: "scrcpy:startPreview",
+	scrcpyStopPreview: "scrcpy:stopPreview",
+	scrcpyGetPreviewStatus: "scrcpy:getPreviewStatus",
 } as const satisfies Record<string, keyof IpcContract>;
+
+export const rendererEventChannels = {
+	scrcpyVideoEvent: "scrcpy:videoEvent",
+} as const;
 
 export type IpcChannel = keyof IpcContract;
 

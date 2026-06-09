@@ -16,6 +16,17 @@ AzurAuto Desktop 是基于 Electron、TanStack Start、React 和 Tailwind CSS �
 - Android platform-tools，并确保 `adb` 可以在当前 shell 中执行。
 - 已启动的 Android 模拟器或已连接并授权的 Android 设备。
 - 可选：ATX 安装包路径，通过 `AZURAUTO_ATX_APK_PATH` 指定。
+- 使用内嵌 scrcpy 预览前，需要下载一次 scrcpy server：
+
+```bash
+pnpm --filter desktop fetch:scrcpy-server
+```
+
+如需使用自定义 server 文件，可设置：
+
+```bash
+export AZURAUTO_SCRCPY_SERVER_PATH=/absolute/path/to/scrcpy-server.jar
+```
 
 ```bash
 export AZURAUTO_ATX_APK_PATH=/absolute/path/to/atx.apk
@@ -88,6 +99,13 @@ pnpm --filter desktop check
 
 - `getBootstrapStatus()`：读取当前 ADB/ATX bootstrap 状态。
 - `runBootstrap()`：手动重新执行环境检查和可恢复安装流程。
+
+scrcpy 投屏能力挂载在独立作用域 `window.scrcpy`：
+
+- `startPreview()`：启动基于 `@yume-chan/scrcpy` 的内嵌预览。
+- `stopPreview()`：停止内嵌预览。
+- `getPreviewStatus()`：读取预览状态。
+- `onVideoEvent()`：订阅主进程传来的 scrcpy 视频元数据和视频包，由渲染层 WebCodecs 解码到 canvas。
 
 当前不再保留测试用途的 `window.bot.tap`、`window.bot.swipe` 和 `window.bot.screenshot`。后续如果需要游戏截图、点击或滑动能力，应在自动化服务层设计稳定接口，再通过最小化 preload API 暴露给渲染层。
 
