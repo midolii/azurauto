@@ -2,10 +2,12 @@ import {
 	environmentIpcChannels,
 	type EnvironmentIpcContract,
 } from "./environment.ts";
+import { runtimeIpcChannels, type RuntimeIpcContract } from "./runtime.ts";
 import { scrcpyIpcChannels, scrcpyRendererEventChannels } from "./scrcpy.ts";
 import type { ScrcpyIpcContract } from "./scrcpy.ts";
 
 export type * from "./environment.ts";
+export type * from "./runtime.ts";
 export type * from "./scrcpy.ts";
 
 /**
@@ -14,7 +16,7 @@ export type * from "./scrcpy.ts";
  *
  * 按业务域拆分 contract 后在这里聚合，避免单文件持续膨胀，同时保持跨进程类型检查入口稳定。
  */
-export type IpcContract = EnvironmentIpcContract & ScrcpyIpcContract;
+export type IpcContract = EnvironmentIpcContract & RuntimeIpcContract & ScrcpyIpcContract;
 
 /**
  * Stable channel constants. Prefer these over raw string literals.
@@ -22,8 +24,13 @@ export type IpcContract = EnvironmentIpcContract & ScrcpyIpcContract;
  */
 export const ipcChannels = {
 	environmentGetBootstrapStatus: environmentIpcChannels.getBootstrapStatus,
+	environmentGetResourceStatus: environmentIpcChannels.getResourceStatus,
+	environmentPrepareResources: environmentIpcChannels.prepareResources,
 	environmentRunBootstrap: environmentIpcChannels.runBootstrap,
 	environmentCaptureScreenshot: environmentIpcChannels.captureScreenshot,
+	runtimeGetStatus: runtimeIpcChannels.getStatus,
+	runtimeStart: runtimeIpcChannels.start,
+	runtimePause: runtimeIpcChannels.pause,
 	scrcpyStartPreview: scrcpyIpcChannels.startPreview,
 	scrcpyStopPreview: scrcpyIpcChannels.stopPreview,
 	scrcpyGetPreviewStatus: scrcpyIpcChannels.getPreviewStatus,

@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { app } from "electron";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export type AndroidResources = {
 	root: string;
@@ -17,7 +20,7 @@ export type AndroidResources = {
 export function resolveAndroidResources(): AndroidResources {
 	const root = app.isPackaged
 		? join(process.resourcesPath, "android")
-		: join(app.getAppPath(), "resources", "android");
+		: join(__dirname, "..", "..", "resources", "android");
 
 	const adbPath = join(
 		root,

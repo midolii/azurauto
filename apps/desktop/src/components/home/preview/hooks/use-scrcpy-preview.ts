@@ -141,6 +141,7 @@ export function useScrcpyPreview({
 
 		return () => {
 			unsubscribe();
+			onFps(0);
 			void resetScrcpyDecoder();
 		};
 	}, [onError, onFps, resetScrcpyDecoder]);
@@ -154,6 +155,9 @@ export function useScrcpyPreview({
 	async function toggleScrcpyPreview() {
 		setIsScrcpyBusy(true);
 		try {
+			if (scrcpyStatus?.running) {
+				onFps(0);
+			}
 			setScrcpyStatus(
 				scrcpyStatus?.running
 					? await window.scrcpy.stopPreview()

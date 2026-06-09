@@ -27,6 +27,7 @@ export function useUiautomator2Preview({
 			!isStreaming ||
 			status?.phase !== "ready"
 		) {
+			onFps(0);
 			return;
 		}
 

@@ -1,4 +1,5 @@
 import type { DeviceBootstrapService } from "@azurauto/automation";
+import type { ResourcePreparationService } from "../../utils/resource-preparation.ts";
 import { ipcChannels } from "../contract/index.ts";
 import { handleIpc } from "./typed-handle.ts";
 
@@ -8,9 +9,18 @@ import { handleIpc } from "./typed-handle.ts";
  */
 export function registerEnvironmentIpcHandlers(
 	bootstrapService: DeviceBootstrapService,
+	resourcePreparationService: ResourcePreparationService,
 ) {
 	handleIpc(ipcChannels.environmentGetBootstrapStatus, async () => {
 		return bootstrapService.getStatus();
+	});
+
+	handleIpc(ipcChannels.environmentGetResourceStatus, async () => {
+		return resourcePreparationService.getStatus();
+	});
+
+	handleIpc(ipcChannels.environmentPrepareResources, async () => {
+		return resourcePreparationService.prepare();
 	});
 
 	handleIpc(ipcChannels.environmentRunBootstrap, async () => {

@@ -4,7 +4,7 @@ import {
 	HeadContent,
 	Scripts,
 } from "@tanstack/react-router";
-import { AppDevtools } from "../components/app-devtools";
+import { Toaster } from "sonner";
 import "../styles.css";
 
 interface MyRouterContext {
@@ -38,7 +38,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				{children}
-				<AppDevtools />
+				<Toaster position="top-right" theme="light" />
 				<Scripts />
 			</body>
 		</html>

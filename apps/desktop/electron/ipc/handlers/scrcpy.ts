@@ -15,6 +15,10 @@ import {
 } from "../contract/index.ts";
 import { handleIpc } from "./typed-handle.ts";
 
+const AZURAUTO_ADB_SERVER_PORT = Number(
+	process.env.AZURAUTO_ADB_SERVER_PORT ?? 15_037,
+);
+
 let embeddedScrcpy = new EmbeddedScrcpyClient({
 	serverPath: process.env.AZURAUTO_SCRCPY_SERVER_PATH,
 });
@@ -35,6 +39,7 @@ export function registerScrcpyIpcHandlers(
 	resources?: AndroidResources,
 ) {
 	embeddedScrcpy = new EmbeddedScrcpyClient({
+		adbPort: AZURAUTO_ADB_SERVER_PORT,
 		serverPath:
 			process.env.AZURAUTO_SCRCPY_SERVER_PATH ?? resources?.scrcpyServerPath,
 	});

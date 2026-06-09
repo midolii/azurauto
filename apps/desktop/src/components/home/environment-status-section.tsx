@@ -6,10 +6,14 @@ export function EnvironmentStatusSection({
 	status,
 	isRetrying,
 	onRetry,
+	actionLabel = "重新检查",
+	retryingLabel = "重试中...",
 }: {
 	status: BootstrapStatus | null;
 	isRetrying: boolean;
 	onRetry(): void;
+	actionLabel?: string;
+	retryingLabel?: string;
 }) {
 	const phaseCopy = getPhaseCopy(status);
 
@@ -30,11 +34,17 @@ export function EnvironmentStatusSection({
 
 				<button
 					type="button"
-					className="rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 text-sm disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+					className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 text-sm disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
 					disabled={!status?.recoverable || isRetrying}
 					onClick={onRetry}
 				>
-					{isRetrying ? "重试中..." : "重新检查"}
+					{isRetrying ? (
+						<span
+							className="size-3 animate-spin rounded-full border border-current border-t-transparent"
+							aria-hidden="true"
+						/>
+					) : null}
+					{isRetrying ? retryingLabel : actionLabel}
 				</button>
 			</div>
 

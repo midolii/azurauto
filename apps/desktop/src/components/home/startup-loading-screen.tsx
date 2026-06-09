@@ -1,10 +1,10 @@
-import type { BootstrapStatus } from "@azurauto/automation";
 import { motion } from "motion/react";
+import type { StartupResourceStatus } from "../../../electron/ipc/contract/index.ts";
 
 export function StartupLoadingScreen({
 	status,
 }: {
-	status: BootstrapStatus | null;
+	status: StartupResourceStatus | null;
 }) {
 	return (
 		<motion.div
@@ -26,10 +26,10 @@ export function StartupLoadingScreen({
 					AzurAuto
 				</p>
 				<h1 className="mt-4 font-semibold text-2xl text-white">
-					正在准备使用环境
+					正在准备本地资源
 				</h1>
 				<p className="mt-3 text-nowrap text-slate-400 leading-7">
-					正在连接设备，并准备运行所需内容。请保持模拟器或安卓设备开启。
+					正在检查脚本运行需要的本地资源，不会自动连接 ADB 设备。
 				</p>
 				<p className="mt-6 min-h-5 text-slate-500 text-sm">
 					{status?.message ?? "马上就好..."}

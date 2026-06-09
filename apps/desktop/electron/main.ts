@@ -9,6 +9,7 @@ import {
 import { DeviceBootstrapService } from "@azurauto/automation";
 import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from "electron";
 import { cleanupIpcResources, registerIpcHandlers } from "./ipc/handlers/index.ts";
+import { ResourcePreparationService } from "./utils/resource-preparation.ts";
 import { resolveAndroidResources } from "./utils/android-resources.ts";
 import { RendererServerManager } from "./utils/renderer-server.ts";
 
@@ -42,6 +43,7 @@ async function createMainWindow() {
 	console.log("Electron app ready. Creating window...");
 	const resources = resolveAndroidResources();
 	console.log("Resolved Android resources:", resources);
+	const resourcePreparationService = new ResourcePreparationService(resources);
 	const adb = new AdbClient({
 		bin: resources.adbPath,
 		port: AZURAUTO_ADB_SERVER_PORT,
@@ -59,10 +61,10 @@ async function createMainWindow() {
 
 	// Register IPC before the renderer loads so preload calls always have handlers.
 	// 在渲染进程加载前注册 IPC，确保 preload 调用时主进程 handler 已经存在。
-	registerIpcHandlers(bootstrapService, resources);
+	registerIpcHandlers(bootstrapService, resourcePreparationService, resources);
 
-	// 环境检查异步启动，避免 ADB/ATX 安装耗时阻塞主窗口展示。
-	void bootstrapService.run();
+	// 启动阶段只准备本地资源，不连接 ADB；设备 bootstrap 由用户点击 Start/Debug 触发。
+	void resourcePreparationService.prepare();
 
 	mainWindow = new BrowserWindow({
 		width: 1280,

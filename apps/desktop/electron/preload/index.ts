@@ -1,4 +1,5 @@
 import { registerEnvironmentPreload } from "./environment.ts";
+import { registerRuntimePreload } from "./runtime.ts";
 import { registerScrcpyPreload } from "./scrcpy.ts";
 
 /**
@@ -8,7 +9,9 @@ import { registerScrcpyPreload } from "./scrcpy.ts";
  * 构建脚本会把它打包为 dist/index.cjs，Electron 只加载打包产物。
  */
 registerEnvironmentPreload();
+registerRuntimePreload();
 registerScrcpyPreload();
 
 export type { EnvironmentApi } from "./environment.ts";
+export type { RuntimeApi } from "./runtime.ts";
 export type { ScrcpyApi } from "./scrcpy.ts";

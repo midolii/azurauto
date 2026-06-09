@@ -15,12 +15,16 @@ function invoke<Channel extends IpcChannel>(
 
 export type EnvironmentApi = {
 	getBootstrapStatus(): Promise<IpcResult<"environment:getBootstrapStatus">>;
+	getResourceStatus(): Promise<IpcResult<"environment:getResourceStatus">>;
+	prepareResources(): Promise<IpcResult<"environment:prepareResources">>;
 	runBootstrap(): Promise<IpcResult<"environment:runBootstrap">>;
 	captureScreenshot(): Promise<IpcResult<"environment:captureScreenshot">>;
 };
 
 const environment: EnvironmentApi = {
 	getBootstrapStatus: () => invoke(ipcChannels.environmentGetBootstrapStatus),
+	getResourceStatus: () => invoke(ipcChannels.environmentGetResourceStatus),
+	prepareResources: () => invoke(ipcChannels.environmentPrepareResources),
 	runBootstrap: () => invoke(ipcChannels.environmentRunBootstrap),
 	captureScreenshot: () => invoke(ipcChannels.environmentCaptureScreenshot),
 };
