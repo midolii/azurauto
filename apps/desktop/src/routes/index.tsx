@@ -5,16 +5,17 @@ import { useEffect } from "react";
 import { DesktopAppShell } from "../components/app-shell/desktop-app-shell";
 import { StartupLoadingScreen } from "../components/home/startup-loading-screen";
 import { useEnvironmentBootstrap } from "../hooks/use-environment-bootstrap";
-import { desktopStore } from "../stores/desktop-store";
+import { type DesktopPage, desktopStore } from "../stores/desktop-store";
 import { DebugPage } from "./~pages/debug-page";
 import { HomePage } from "./~pages/home-page";
 import { SettingsPage } from "./~pages/settings-page";
 import { TaskExecutionPage } from "./~pages/task-execution-page";
+import { TaskPage } from "./~pages/task-page";
 
 export const Route = createFileRoute("/")({ component: Home });
 
 interface ShellPageConfig {
-	id: "home" | "debug" | "tasks" | "settings";
+	id: DesktopPage;
 	content: ReactNode;
 }
 
@@ -122,6 +123,14 @@ function getShellPages({
 			content: <HomePage />,
 		},
 		{
+			id: "tasks",
+			content: <TaskPage />,
+		},
+		{
+			id: "logs",
+			content: <TaskExecutionPage />,
+		},
+		{
 			id: "debug",
 			content: (
 				<DebugPage
@@ -130,10 +139,6 @@ function getShellPages({
 					onConnect={onConnect}
 				/>
 			),
-		},
-		{
-			id: "tasks",
-			content: <TaskExecutionPage />,
 		},
 		{
 			id: "settings",

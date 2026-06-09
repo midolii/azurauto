@@ -1,4 +1,6 @@
 import type { BootstrapStatus } from "@azurauto/automation";
+import { LoaderCircle } from "lucide-react";
+import { Button } from "#/components/ui/button.tsx";
 import { getPhaseCopy } from "../../utils/environment-copy";
 import { StatusItem } from "./status-item";
 
@@ -18,34 +20,31 @@ export function EnvironmentStatusSection({
 	const phaseCopy = getPhaseCopy(status);
 
 	return (
-		<section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
-			<div className="flex items-start justify-between gap-4">
+		<section className="rounded-xl bg-white/82 p-5 shadow-sm ring-1 ring-slate-200">
+			<div className="flex items-start justify-between gap-4 border-slate-200 border-b pb-4">
 				<div className="space-y-2">
 					<span
-						className={`inline-flex rounded-full px-3 py-1 text-sm ${phaseCopy.badgeClass}`}
+						className={`inline-flex border-l-2 px-3 py-1 font-medium text-xs ${phaseCopy.badgeClass}`}
 					>
 						{phaseCopy.label}
 					</span>
-					<h2 className="font-semibold text-lg">
+					<h2 className="font-semibold text-lg text-slate-950">
 						{status?.message ?? "正在读取环境状态..."}
 					</h2>
-					<p className="text-slate-400 text-sm">{phaseCopy.description}</p>
+					<p className="text-slate-600 text-sm">{phaseCopy.description}</p>
 				</div>
 
-				<button
+				<Button
 					type="button"
-					className="inline-flex items-center gap-2 rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 text-sm disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+					className="shrink-0"
 					disabled={!status?.recoverable || isRetrying}
 					onClick={onRetry}
 				>
 					{isRetrying ? (
-						<span
-							className="size-3 animate-spin rounded-full border border-current border-t-transparent"
-							aria-hidden="true"
-						/>
+						<LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
 					) : null}
 					{isRetrying ? retryingLabel : actionLabel}
-				</button>
+				</Button>
 			</div>
 
 			<dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
@@ -62,12 +61,12 @@ export function EnvironmentStatusSection({
 			</dl>
 
 			{status?.nextAction ? (
-				<div className="mt-5 rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-4 text-cyan-100 text-sm">
+				<div className="mt-5 border-sky-300 border-l-2 bg-sky-50 px-4 py-3 text-sky-900 text-sm">
 					下一步：{status.nextAction}
 				</div>
 			) : null}
 
-			<div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/5 p-3 text-cyan-100/80 text-xs">
+			<div className="mt-3 border-slate-300 border-l-2 bg-slate-50 px-4 py-3 text-slate-600 text-xs">
 				AzurAuto 会使用专用 ADB server 端口自动恢复连接，不会重启系统默认 ADB
 				服务。
 			</div>

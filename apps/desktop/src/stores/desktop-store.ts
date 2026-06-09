@@ -6,7 +6,7 @@ import type {
 	StartupResourceStatus,
 } from "../../electron/ipc/contract/index.ts";
 
-export type DesktopPage = "home" | "debug" | "tasks" | "settings";
+export type DesktopPage = "home" | "debug" | "tasks" | "logs" | "settings";
 export type TaskExecutionStatus = "idle" | "running" | "paused" | "completed";
 
 export interface DesktopSettingsState {

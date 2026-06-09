@@ -1,4 +1,10 @@
-import { TerminalSquare } from "lucide-react";
+import {
+	CircleAlert,
+	CircleCheck,
+	Info,
+	TerminalSquare,
+	TriangleAlert,
+} from "lucide-react";
 
 import { PageFrame } from "#/components/app-shell/page-frame.tsx";
 import { Button } from "#/components/ui/button.tsx";
@@ -16,17 +22,18 @@ export function TaskExecutionPage() {
 			kicker="Logs"
 			title="日志记录"
 			description="记录运行时、环境检查和性能耗时日志，便于定位启动与截图链路耗时。"
+			className="h-full min-h-0"
 		>
-			<div className="h-full min-h-115">
-				<section className="flex h-full min-h-0 flex-col rounded-3xl border border-slate-200/70 bg-slate-950 p-4 text-slate-100 shadow-sm dark:border-white/10">
-					<div className="mb-3 flex items-center justify-between gap-3 border-slate-800 border-b pb-3">
+			<div className="flex h-full min-h-0 flex-col">
+				<section className="flex min-h-0 flex-1 flex-col text-slate-950">
+					<div className="flex items-center justify-between gap-3 border-slate-200 border-b pb-3">
 						<div className="flex items-center gap-2">
 							<TerminalSquare
-								className="size-4 text-cyan-300"
+								className="size-4 text-sky-600"
 								aria-hidden="true"
 							/>
 							<h2 className="font-semibold text-sm">运行日志</h2>
-							<span className="rounded-full bg-white/10 px-2 py-0.5 text-[0.68rem] text-slate-400">
+							<span className="border-slate-400 border-l-2 bg-slate-50 px-2 py-0.5 font-mono text-[0.68rem] text-slate-500">
 								{logs.length} 条
 							</span>
 						</div>
@@ -34,45 +41,55 @@ export function TaskExecutionPage() {
 							type="button"
 							variant="ghost"
 							size="sm"
-							className="h-7 rounded-lg px-2 text-slate-300 text-xs hover:bg-white/10 hover:text-white"
+							className="h-8 rounded-lg border border-slate-200 px-3 text-slate-600 text-xs hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:opacity-40"
 							disabled={logs.length === 0}
 							onClick={clearLogs}
 						>
 							Clear
 						</Button>
 					</div>
-					<div className="min-h-0 flex-1 space-y-2 overflow-auto font-mono text-xs">
-						{logs.length === 0 ? (
-							<div className="rounded-xl bg-white/5 p-3 text-slate-400">
-								暂无日志，点击 Start 后会显示运行链路耗时。
-							</div>
-						) : null}
-						{logs.map((log) => (
-							<div
-								key={log.id}
-								className="rounded-xl border border-white/5 bg-white/5 p-3 ring-1 ring-transparent transition-colors hover:bg-white/[0.07]"
-							>
-								<div className="flex flex-wrap items-center gap-2 text-[0.7rem]">
-									<span className="text-cyan-200">
-										{new Date(log.timestamp).toLocaleTimeString()}
-									</span>
-									<span className={getLevelClassName(log.level)}>
-										{log.level}
-									</span>
-									<span className="rounded-md bg-cyan-400/10 px-2 py-0.5 text-cyan-200">
-										{log.scope}
-									</span>
-									{log.durationMs === undefined ? null : (
-										<span className="rounded-md bg-amber-400/10 px-2 py-0.5 text-amber-200">
-											{log.durationMs}ms
-										</span>
-									)}
+					<div className="min-h-0 flex-1 overflow-hidden">
+						<div className="h-full space-y-2 overflow-auto py-4 font-mono text-xs">
+							{logs.length === 0 ? (
+								<div className="flex min-h-full items-center justify-center rounded-xl border border-slate-300 border-dashed bg-white p-6 text-center text-slate-500">
+									暂无日志。点击 Start
+									后，这里会显示运行链路、环境检查和截图耗时。
 								</div>
-								{log.message === "completed" ? null : (
-									<p className="mt-2 text-slate-300 leading-5">{log.message}</p>
-								)}
-							</div>
-						))}
+							) : null}
+							{logs.map((log) => {
+								const LevelIcon = getLevelIcon(log.level);
+
+								return (
+									<div
+										key={log.id}
+										className="rounded-lg border border-slate-200 bg-white p-3 ring-1 ring-transparent transition-colors hover:border-slate-300 hover:bg-slate-50"
+									>
+										<div className="flex flex-wrap items-center gap-2 text-[0.7rem]">
+											<span className="text-sky-700">
+												{new Date(log.timestamp).toLocaleTimeString()}
+											</span>
+											<span className={getLevelClassName(log.level)}>
+												<LevelIcon className="size-3" aria-hidden="true" />
+												{log.level}
+											</span>
+											<span className="border-sky-500 border-l-2 bg-sky-50 px-2 py-0.5 text-sky-700">
+												{log.scope}
+											</span>
+											{log.durationMs === undefined ? null : (
+												<span className="border-amber-500 border-l-2 bg-amber-50 px-2 py-0.5 text-amber-700">
+													{log.durationMs}ms
+												</span>
+											)}
+										</div>
+										{log.message === "completed" ? null : (
+											<p className="mt-2 text-slate-700 leading-5">
+												{log.message}
+											</p>
+										)}
+									</div>
+								);
+							})}
+						</div>
 					</div>
 				</section>
 			</div>
@@ -80,18 +97,25 @@ export function TaskExecutionPage() {
 	);
 }
 
+function getLevelIcon(level: string) {
+	if (level === "error") return CircleAlert;
+	if (level === "warn") return TriangleAlert;
+	if (level === "debug") return Info;
+	return CircleCheck;
+}
+
 function getLevelClassName(level: string) {
 	if (level === "error") {
-		return "rounded-md bg-rose-400/10 px-2 py-0.5 text-rose-200";
+		return "inline-flex items-center gap-1 border-rose-500 border-l-2 bg-rose-50 px-2 py-0.5 text-rose-700";
 	}
 
 	if (level === "warn") {
-		return "rounded-md bg-amber-400/10 px-2 py-0.5 text-amber-200";
+		return "inline-flex items-center gap-1 border-amber-500 border-l-2 bg-amber-50 px-2 py-0.5 text-amber-700";
 	}
 
 	if (level === "debug") {
-		return "rounded-md bg-violet-400/10 px-2 py-0.5 text-violet-200";
+		return "inline-flex items-center gap-1 border-violet-500 border-l-2 bg-violet-50 px-2 py-0.5 text-violet-700";
 	}
 
-	return "rounded-md bg-emerald-400/10 px-2 py-0.5 text-emerald-200";
+	return "inline-flex items-center gap-1 border-emerald-500 border-l-2 bg-emerald-50 px-2 py-0.5 text-emerald-700";
 }

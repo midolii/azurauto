@@ -20,28 +20,26 @@ export function PageFrame({
 	showHeader = true,
 }: PageFrameProps) {
 	return (
-		<section className={cn("flex min-h-full flex-col gap-6", className)}>
+		<section className={cn("flex min-h-full flex-col gap-5", className)}>
 			{showHeader ? (
-				<header className="rounded-3xl border border-white/60 bg-white/70 p-6 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5">
-					{kicker ? (
-						<p className="mb-2 font-semibold text-[0.7rem] text-cyan-700 uppercase tracking-[0.18em] dark:text-cyan-300">
-							{kicker}
-						</p>
-					) : null}
-					<h1 className="font-bold text-2xl text-slate-950 tracking-tight dark:text-slate-50">
-						{title}
-					</h1>
-					{description ? (
-						<p className="mt-2 max-w-3xl text-slate-600 text-sm leading-6 dark:text-slate-300">
-							{description}
-						</p>
-					) : null}
+				<header className="px-1 pb-2">
+					<div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+						<div className="min-w-0">
+							{kicker ? <p className="command-kicker mb-2">{kicker}</p> : null}
+							<h1 className="font-bold text-2xl text-slate-950 tracking-tight">
+								{title}
+							</h1>
+							{description ? (
+								<p className="mt-2 max-w-3xl text-slate-600 text-sm leading-6">
+									{description}
+								</p>
+							) : null}
+						</div>
+					</div>
 				</header>
 			) : null}
 
-			<div className="flex-1 rounded-3xl border border-white/60 bg-white/55 p-6 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-white/5">
-				{children}
-			</div>
+			<div className="flex min-h-0 flex-1 flex-col px-1">{children}</div>
 		</section>
 	);
 }

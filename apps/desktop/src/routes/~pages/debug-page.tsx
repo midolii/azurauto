@@ -17,7 +17,7 @@ export function DebugPage({ status, isRetrying, onConnect }: DebugPageProps) {
 			title="自动化调试"
 			description="手动连接或重新检查 ADB/ATX 环境，并按需开启 uiautomator 或 scrcpy 预览。应用启动阶段不会自动连接 ADB。"
 		>
-			<div className="mx-auto max-w-6xl space-y-6">
+			<div className="mx-auto flex w-full max-w-5xl flex-col space-y-6">
 				<EnvironmentStatusSection
 					status={status}
 					isRetrying={isRetrying}

@@ -1,6 +1,9 @@
+import type { LucideIcon } from "lucide-react";
 import {
+	Activity,
 	Bug,
 	Clock3,
+	CpuIcon,
 	Home,
 	LoaderCircle,
 	Pause,
@@ -31,26 +34,22 @@ const navItems: Array<{
 	page: DesktopPage;
 	label: string;
 	description: string;
-	icon: typeof Home;
+	icon: LucideIcon;
 }> = [
-	{
-		page: "home",
-		label: "首页",
-		description: "欢迎入口",
-		icon: Home,
-	},
-	{
-		page: "debug",
-		label: "Debug",
-		description: "环境与预览",
-		icon: Bug,
-	},
+	{ page: "home", label: "控制台", description: "运行入口", icon: Home },
 	{
 		page: "tasks",
-		label: "日志记录",
-		description: "运行与耗时",
+		label: "任务",
+		description: "执行列表 / 运行任务",
 		icon: PlaySquare,
 	},
+	{
+		page: "logs",
+		label: "日志记录",
+		description: "运行与耗时",
+		icon: Clock3,
+	},
+	{ page: "debug", label: "Debug", description: "环境与预览", icon: Bug },
 ];
 
 export function AppSidebar() {
@@ -69,6 +68,12 @@ export function AppSidebar() {
 		: isRuntimeRunning
 			? Pause
 			: Play;
+	const runtimeTone = getRuntimeTone(runtime.phase);
+	const resourceTone = resourceStatus?.ready
+		? "text-emerald-700"
+		: resourceStatus?.phase === "failed" || resourceStatus?.warnings.length
+			? "text-amber-700"
+			: "text-slate-500";
 
 	async function toggleRuntime() {
 		if (!isRuntimeActive) {
@@ -102,57 +107,80 @@ export function AppSidebar() {
 	}
 
 	return (
-		<Sidebar className="border-white/60 bg-white/74 shadow-[0_24px_60px_rgba(15,55,66,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/82">
-			<SidebarHeader>
-				<div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
-					<img
-						src="/icon.png"
-						srcSet="/icon.png 1x, /icon-source.png 2x"
-						alt="AzurAuto"
-						aria-hidden="true"
-						className="size-11 shrink-0 rounded-2xl object-cover shadow-sm ring-1 ring-cyan-600/10"
-					/>
-					<div className="min-w-0">
-						<p className="truncate font-bold text-slate-950 text-sm dark:text-slate-50">
-							AzurAuto
-						</p>
-						<p className="text-muted-foreground text-xs">Desktop Console</p>
-					</div>
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
-						className="ml-auto rounded-full hover:bg-transparent"
-						aria-label={
-							isRuntimeActive ? "Pause script runtime" : "Start script runtime"
-						}
-						disabled={!canToggleRuntime}
-						onClick={toggleRuntime}
-					>
-						<RuntimeControlIcon
-							className={`size-5 ${isRuntimeBusy ? "animate-spin text-slate-400" : isRuntimeRunning ? "text-red-500" : "text-emerald-500"}`}
-							aria-hidden="true"
+		<Sidebar className="border-slate-200/90 bg-white/86 shadow-[18px_0_70px_rgba(15,23,42,0.10)] backdrop-blur-xl">
+			<SidebarHeader className="gap-4 p-4">
+				<div className="rounded-xl border border-slate-200 bg-white/90 p-3 shadow-sm ring-1 ring-sky-500/10">
+					<div className="flex items-center gap-3">
+						<img
+							src="/icon.png"
+							srcSet="/icon.png 1x, /icon-source.png 2x"
+							alt="AzurAuto"
+							className="size-11 shrink-0 rounded-lg object-cover shadow-sm ring-1 ring-sky-200"
 						/>
-					</Button>
+						<div className="min-w-0">
+							<p className="truncate font-bold text-slate-950 text-sm">
+								AzurAuto
+							</p>
+							<p className="font-mono text-[0.68rem] text-sky-700 uppercase tracking-[0.14em]">
+								Desktop Console
+							</p>
+						</div>
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon-sm"
+							className="ml-auto rounded-md text-slate-700 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 disabled:opacity-45"
+							aria-label={
+								isRuntimeActive
+									? "Pause script runtime"
+									: "Start script runtime"
+							}
+							disabled={!canToggleRuntime}
+							onClick={toggleRuntime}
+						>
+							<RuntimeControlIcon
+								className={`size-5 ${isRuntimeBusy ? "animate-spin text-sky-600" : isRuntimeRunning ? "text-amber-600" : "text-emerald-600"}`}
+								aria-hidden="true"
+							/>
+						</Button>
+					</div>
 				</div>
 
-				<div className="rounded-2xl border border-cyan-700/10 bg-cyan-50/80 p-3 dark:border-cyan-300/10 dark:bg-cyan-300/5">
-					<div className="flex items-center justify-between gap-2">
-						<p className="font-semibold text-cyan-950 text-sm dark:text-cyan-100">
-							{taskExecution.name}
-						</p>
-						<span className="rounded-full bg-white/80 px-2 py-0.5 font-medium text-[0.68rem] text-cyan-800 capitalize ring-1 ring-cyan-700/10 dark:bg-white/10 dark:text-cyan-100">
-							{taskExecution.status}
-						</span>
+				<div className="rounded-xl border border-slate-200 bg-white/76 p-4 shadow-sm">
+					<div className="mb-3 flex items-center justify-between gap-2">
+						<div className="flex items-center gap-2">
+							<Activity
+								className={`size-4 ${runtimeTone.icon}`}
+								aria-hidden="true"
+							/>
+							<p className="font-semibold text-slate-900 text-sm">运行状态</p>
+						</div>
 					</div>
-					<div className="mt-3 flex items-center gap-2 text-cyan-900/70 text-xs dark:text-cyan-100/70">
-						<Clock3 className="size-3.5" aria-hidden="true" />
-						<span>执行时间 {taskExecution.elapsedLabel}</span>
-					</div>
-					<div className="mt-3 flex items-center gap-2">
-						<span className="min-w-0 truncate text-cyan-900/70 text-xs dark:text-cyan-100/70">
-							{runtime.message}
-						</span>
+
+					<p className="line-clamp-2 text-slate-600 text-xs leading-4">
+						{runtime.message}
+					</p>
+					<div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+						<div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+							<div className="flex items-center gap-1.5 text-slate-500">
+								<Clock3 className="size-3.5" aria-hidden="true" />
+								<span>运行时间</span>
+							</div>
+							<p className="mt-1 font-mono text-slate-950">
+								{taskExecution.elapsedLabel}
+							</p>
+						</div>
+						<div className="rounded-lg border border-slate-200 bg-slate-50/80 p-3">
+							<div className="flex items-center gap-1.5 text-slate-500">
+								<CpuIcon className="size-3.5" aria-hidden="true" />
+								<span>Core</span>
+							</div>
+							<p className={`mt-1 font-mono ${resourceTone}`}>
+								{resourceStatus?.ready
+									? "ready"
+									: (resourceStatus?.phase ?? "pending")}
+							</p>
+						</div>
 					</div>
 				</div>
 			</SidebarHeader>
@@ -191,7 +219,7 @@ export function AppSidebar() {
 				<Button
 					type="button"
 					variant={activePage === "settings" ? "secondary" : "ghost"}
-					className="w-full justify-start rounded-xl transition-all duration-150 ease-out active:scale-[0.98]"
+					className="w-full justify-start rounded-lg border border-slate-200 bg-white/62 text-slate-700 transition-all duration-150 ease-out hover:border-sky-300 hover:bg-sky-50 hover:text-sky-800 active:scale-[0.98] active:border-sky-300 active:bg-sky-100"
 					onClick={() => desktopStore.setActivePage("settings")}
 					aria-current={activePage === "settings" ? "page" : undefined}
 				>
@@ -201,4 +229,32 @@ export function AppSidebar() {
 			</SidebarFooter>
 		</Sidebar>
 	);
+}
+
+function getRuntimeTone(phase: string) {
+	if (phase === "running" || phase === "starting") {
+		return {
+			icon: "text-emerald-600",
+			badge: "border-emerald-500 bg-emerald-50 text-emerald-700",
+		};
+	}
+
+	if (phase === "paused" || phase === "pausing") {
+		return {
+			icon: "text-amber-600",
+			badge: "border-amber-500 bg-amber-50 text-amber-700",
+		};
+	}
+
+	if (phase === "error") {
+		return {
+			icon: "text-rose-600",
+			badge: "border-rose-500 bg-rose-50 text-rose-700",
+		};
+	}
+
+	return {
+		icon: "text-slate-500",
+		badge: "border-slate-400 bg-slate-100 text-slate-600",
+	};
 }

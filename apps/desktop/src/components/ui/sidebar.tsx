@@ -73,7 +73,7 @@ function SidebarGroupLabel({
 		<div
 			data-slot="sidebar-group-label"
 			className={cn(
-				"px-2 font-medium text-muted-foreground text-xs uppercase tracking-[0.16em]",
+				"px-2 font-medium font-mono text-[0.66rem] text-slate-500 uppercase tracking-[0.18em]",
 				className,
 			)}
 			{...props}
@@ -101,9 +101,9 @@ function SidebarMenuButton({
 			data-slot="sidebar-menu-button"
 			data-active={isActive}
 			className={cn(
-				"flex w-full cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left font-medium text-sm outline-none transition-all duration-150 ease-out hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring active:scale-[0.98]",
+				"flex w-full cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 text-left font-medium text-slate-600 text-sm outline-none transition-all duration-150 ease-out hover:border-sky-200 hover:bg-sky-50 hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar active:scale-[0.98] active:border-sky-300 active:bg-sky-100",
 				isActive &&
-					"bg-sidebar-primary text-sidebar-primary-foreground shadow-sm hover:bg-sidebar-primary hover:text-sidebar-primary-foreground",
+					"border-sky-200 bg-sky-50 text-sky-900 shadow-[0_10px_30px_rgba(2,132,199,0.08)] hover:bg-sky-50 hover:text-sky-900",
 				className,
 			)}
 			{...props}

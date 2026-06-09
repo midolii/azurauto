@@ -1,5 +1,13 @@
 import type { BootstrapStatus } from "@azurauto/automation";
 import { useCallback, useState } from "react";
+import { Button } from "#/components/ui/button.tsx";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "#/components/ui/select.tsx";
 
 import { useDesktopStore } from "#/stores/desktop-store.ts";
 import { StatusItem } from "../status-item";
@@ -44,18 +52,18 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 
 	return (
 		<div className="flex flex-col gap-6">
-			<section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+			<section className="rounded-xl bg-white/82 p-5 shadow-sm ring-1 ring-slate-200">
 				<div className="space-y-2">
-					<span className="inline-flex rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-300 text-sm">
+					<span className="inline-flex rounded-md border border-sky-200 bg-sky-50 px-3 py-1 text-sky-700 text-sm">
 						uiautomator2
 					</span>
-					<h2 className="font-semibold text-lg">实时截图输入</h2>
-					<p className="text-slate-400 text-sm">
+					<h2 className="font-semibold text-lg text-slate-950">实时截图输入</h2>
+					<p className="text-slate-600 text-sm">
 						脚本启动后会自动请求 uiautomator 截图，用于后续 OCR 识别逻辑。
 					</p>
 				</div>
 
-				<div className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
+				<div className="mt-5 aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
 					{frameUrl ? (
 						<img
 							alt="Android device live screenshot"
@@ -63,7 +71,7 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 							src={frameUrl}
 						/>
 					) : (
-						<div className="flex min-h-80 items-center justify-center p-8 text-center text-slate-500">
+						<div className="flex h-full items-center justify-center p-8 text-center text-slate-500">
 							{runtime.screenshotCaptureRunning
 								? "正在等待 uiautomator 截图帧..."
 								: "点击侧边栏顶部启动按钮后，这里会自动显示 uiautomator 实时截图。"}
@@ -71,7 +79,7 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 					)}
 				</div>
 
-				<div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+				<div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
 					<StatusItem
 						label="截图状态"
 						value={isUiautomatorStreaming ? "运行中" : "已停止"}
@@ -88,72 +96,80 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 				</div>
 			</section>
 
-			<section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-xl">
+			<section className="rounded-xl bg-white/82 p-5 shadow-sm ring-1 ring-slate-200">
 				<div className="flex flex-wrap items-start justify-between gap-4">
 					<div className="space-y-2">
-						<span className="inline-flex rounded-full bg-violet-500/15 px-3 py-1 text-sm text-violet-300">
+						<span className="inline-flex rounded-md border border-violet-200 bg-violet-50 px-3 py-1 text-sm text-violet-700">
 							scrcpy
 						</span>
-						<h2 className="font-semibold text-lg">手动视频预览</h2>
-						<p className="text-slate-400 text-sm">
+						<h2 className="font-semibold text-lg text-slate-950">
+							手动视频预览
+						</h2>
+						<p className="text-slate-600 text-sm">
 							scrcpy 用于低延迟人工调试预览，不会随脚本启动自动开启。
 						</p>
 					</div>
 
 					<div className="flex flex-wrap gap-2">
-						<label className="flex items-center gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-slate-300 text-sm">
+						<div className="flex items-center gap-2 text-sm">
 							<span className="text-slate-500">FPS</span>
-							<select
-								className="bg-transparent text-slate-100 outline-none disabled:text-slate-500"
+							<Select
 								disabled={scrcpy.scrcpyStatus?.running || scrcpy.isScrcpyBusy}
-								value={scrcpy.scrcpyMaxFps}
-								onChange={(event) =>
-									scrcpy.setScrcpyMaxFps(Number(event.currentTarget.value))
-								}
+								value={String(scrcpy.scrcpyMaxFps)}
+								onValueChange={(value) => scrcpy.setScrcpyMaxFps(Number(value))}
 							>
-								{SCRCPY_FPS_OPTIONS.map((value) => (
-									<option key={value} value={value}>
-										{value}
-									</option>
-								))}
-							</select>
-						</label>
-						<label className="flex items-center gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-slate-300 text-sm">
+								<SelectTrigger size="sm" className="w-22 bg-white">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{SCRCPY_FPS_OPTIONS.map((value) => (
+										<SelectItem key={value} value={String(value)}>
+											{value}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<div className="flex items-center gap-2 text-sm">
 							<span className="text-slate-500">分辨率</span>
-							<select
-								className="bg-transparent text-slate-100 outline-none disabled:text-slate-500"
+							<Select
 								disabled={scrcpy.scrcpyStatus?.running || scrcpy.isScrcpyBusy}
-								value={scrcpy.scrcpyMaxSize}
-								onChange={(event) =>
-									scrcpy.setScrcpyMaxSize(Number(event.currentTarget.value))
+								value={String(scrcpy.scrcpyMaxSize)}
+								onValueChange={(value) =>
+									scrcpy.setScrcpyMaxSize(Number(value))
 								}
 							>
-								{SCRCPY_RESOLUTION_OPTIONS.map((option) => (
-									<option key={option.value} value={option.value}>
-										{option.label}
-									</option>
-								))}
-							</select>
-						</label>
-						<button
+								<SelectTrigger size="sm" className="w-28 bg-white">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									{SCRCPY_RESOLUTION_OPTIONS.map((option) => (
+										<SelectItem key={option.value} value={String(option.value)}>
+											{option.label}
+										</SelectItem>
+									))}
+								</SelectContent>
+							</Select>
+						</div>
+						<Button
 							type="button"
-							className="cursor-pointer rounded-lg bg-cyan-500 px-4 py-2 font-medium text-slate-950 text-sm active:scale-95 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+							className="rounded-lg bg-sky-600 px-4 py-2 text-white hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
 							disabled={status?.phase !== "ready" || scrcpy.isScrcpyBusy}
 							onClick={scrcpy.toggleScrcpyPreview}
 						>
 							{scrcpy.scrcpyStatus?.running ? "停止 scrcpy" : "启动 scrcpy"}
-						</button>
+						</Button>
 					</div>
 				</div>
 
-				<div className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
-					<div className="relative min-h-80 p-4">
+				<div className="mt-5 aspect-video overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+					<div className="relative h-full p-4">
 						<div
 							ref={scrcpy.scrcpyCanvasHostRef}
-							className="flex min-h-80 items-center justify-center"
+							className="flex h-full items-center justify-center"
 						/>
 						{scrcpy.isScrcpyCanvasReady ? null : (
-							<div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center text-slate-400">
+							<div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center text-slate-500">
 								{scrcpy.scrcpyStatus?.running
 									? "正在等待 scrcpy 视频帧..."
 									: "点击“启动 scrcpy”后，画面会通过 @yume-chan/scrcpy + WebCodecs 内嵌到此区域。"}
@@ -162,7 +178,7 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 					</div>
 				</div>
 
-				<div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+				<div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-5">
 					<StatusItem
 						label="预览状态"
 						value={scrcpy.scrcpyStatus?.running ? "运行中" : "已停止"}
@@ -179,14 +195,14 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 				</div>
 
 				{scrcpy.scrcpyStatus ? (
-					<div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-sm text-violet-100">
+					<div className="mt-4 border-violet-500 border-l-2 bg-violet-50 p-4 text-sm text-violet-800">
 						{scrcpy.scrcpyStatus.message}
 					</div>
 				) : null}
 			</section>
 
 			{streamError ? (
-				<div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-rose-100 text-sm">
+				<div className="border-rose-500 border-l-2 bg-rose-50 p-4 text-rose-800 text-sm">
 					{streamError}
 				</div>
 			) : null}
