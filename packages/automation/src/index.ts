@@ -34,7 +34,7 @@ export type BootstrapStatus = {
 export type ScreenshotFrame = {
 	serial: string;
 	mimeType: "image/jpeg" | "image/png";
-	base64: string;
+	data: Uint8Array;
 	capturedAt: string;
 };
 
@@ -123,7 +123,7 @@ export class DeviceBootstrapService {
 		return {
 			serial,
 			mimeType: image.mimeType,
-			base64: image.data.toString("base64"),
+			data: image.data,
 			capturedAt: new Date().toISOString(),
 		};
 	}

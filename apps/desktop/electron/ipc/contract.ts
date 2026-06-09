@@ -1,5 +1,13 @@
 import type { BootstrapStatus, ScreenshotFrame } from "@azurauto/automation";
 
+export type ScrcpyPreviewStatus = {
+	running: boolean;
+	pid?: number;
+	serial?: string;
+	message: string;
+	updatedAt: string;
+};
+
 /**
  * Shared IPC contract used by both the Electron main process and preload script.
  * Electron 主进程和 preload 脚本共同使用的 IPC 契约。
@@ -18,6 +26,15 @@ export type IpcContract = {
 	"environment:captureScreenshot": {
 		result: ScreenshotFrame;
 	};
+	"environment:startScrcpyPreview": {
+		result: ScrcpyPreviewStatus;
+	};
+	"environment:stopScrcpyPreview": {
+		result: ScrcpyPreviewStatus;
+	};
+	"environment:getScrcpyPreviewStatus": {
+		result: ScrcpyPreviewStatus;
+	};
 };
 
 /**
@@ -28,6 +45,9 @@ export const ipcChannels = {
 	environmentGetBootstrapStatus: "environment:getBootstrapStatus",
 	environmentRunBootstrap: "environment:runBootstrap",
 	environmentCaptureScreenshot: "environment:captureScreenshot",
+	environmentStartScrcpyPreview: "environment:startScrcpyPreview",
+	environmentStopScrcpyPreview: "environment:stopScrcpyPreview",
+	environmentGetScrcpyPreviewStatus: "environment:getScrcpyPreviewStatus",
 } as const satisfies Record<string, keyof IpcContract>;
 
 export type IpcChannel = keyof IpcContract;

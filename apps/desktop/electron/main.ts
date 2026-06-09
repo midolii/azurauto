@@ -35,9 +35,8 @@ async function createMainWindow() {
 		width: 1280,
 		height: 720,
 		webPreferences: {
-			// Preload runs as a CommonJS sandbox script in packaged Electron apps.
-			// 打包后的 preload 会作为 CommonJS 沙箱脚本执行，不能直接加载 ESM/TS import。
-			preload: join(__dirname, "preload/index.cjs"),
+			// Electron 加载的是 preload TS 源码打包后的 CommonJS 产物。
+			preload: join(__dirname, "preload/dist/index.cjs"),
 			contextIsolation: true,
 		},
 	});

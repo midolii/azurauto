@@ -1,6 +1,9 @@
 import type { BootstrapStatus, ScreenshotFrame } from "@azurauto/automation";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ScrcpyPreviewStatus } from "../../electron/ipc/contract.ts";
+
+type PreviewSource = "scrcpy" | "uiautomator2";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -8,8 +11,17 @@ function Home() {
 	const [status, setStatus] = useState<BootstrapStatus | null>(null);
 	const [isRetrying, setIsRetrying] = useState(false);
 	const [isStreaming, setIsStreaming] = useState(false);
+	const [previewSource, setPreviewSource] =
+		useState<PreviewSource>("uiautomator2");
 	const [frame, setFrame] = useState<ScreenshotFrame | null>(null);
+	const [frameUrl, setFrameUrl] = useState<string | null>(null);
+	const frameUrlRef = useRef<string | null>(null);
+	const [fps, setFps] = useState(0);
 	const [streamError, setStreamError] = useState<string | null>(null);
+	const [scrcpyStatus, setScrcpyStatus] = useState<ScrcpyPreviewStatus | null>(
+		null,
+	);
+	const [isScrcpyBusy, setIsScrcpyBusy] = useState(false);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -31,45 +43,93 @@ function Home() {
 	}, []);
 
 	useEffect(() => {
-		if (!isStreaming || status?.phase !== "ready") {
+		if (
+			previewSource !== "uiautomator2" ||
+			!isStreaming ||
+			status?.phase !== "ready"
+		) {
 			return;
 		}
 
 		let cancelled = false;
-		let inFlight = false;
+		let frames = 0;
+		let fpsStartedAt = performance.now();
 
-		async function captureFrame() {
-			if (inFlight) {
-				return;
-			}
+		async function captureLoop() {
+			// 不使用 setInterval：上一帧完成并渲染后，立即请求下一帧，避免请求堆积。
+			while (!cancelled) {
+				try {
+					const nextFrame = await window.environment.captureScreenshot();
+					if (!cancelled) {
+						setFrame(nextFrame);
+						const nextUrl = URL.createObjectURL(
+							new Blob([new Uint8Array(nextFrame.data)], {
+								type: nextFrame.mimeType,
+							}),
+						);
+						if (frameUrlRef.current) {
+							URL.revokeObjectURL(frameUrlRef.current);
+						}
+						frameUrlRef.current = nextUrl;
+						setFrameUrl(nextUrl);
 
-			inFlight = true;
-			try {
-				const nextFrame = await window.environment.captureScreenshot();
-				if (!cancelled) {
-					setFrame(nextFrame);
-					setStreamError(null);
+						frames += 1;
+						const now = performance.now();
+						if (now - fpsStartedAt >= 1000) {
+							setFps(Math.round((frames * 1000) / (now - fpsStartedAt)));
+							frames = 0;
+							fpsStartedAt = now;
+						}
+
+						setStreamError(null);
+					}
+				} catch (error) {
+					if (!cancelled) {
+						setStreamError(
+							error instanceof Error ? error.message : "获取截图失败，请重试。",
+						);
+						setIsStreaming(false);
+					}
+					break;
 				}
-			} catch (error) {
-				if (!cancelled) {
-					setStreamError(
-						error instanceof Error ? error.message : "获取截图失败，请重试。",
-					);
-					setIsStreaming(false);
-				}
-			} finally {
-				inFlight = false;
+
+				await new Promise((resolve) => requestAnimationFrame(resolve));
 			}
 		}
 
-		void captureFrame();
-		const timer = window.setInterval(captureFrame, 10);
+		void captureLoop();
+
+		return () => {
+			cancelled = true;
+		};
+	}, [isStreaming, previewSource, status?.phase]);
+
+	useEffect(() => {
+		let cancelled = false;
+
+		async function loadScrcpyStatus() {
+			const nextStatus = await window.environment.getScrcpyPreviewStatus();
+			if (!cancelled) {
+				setScrcpyStatus(nextStatus);
+			}
+		}
+
+		void loadScrcpyStatus();
+		const timer = window.setInterval(loadScrcpyStatus, 1000);
 
 		return () => {
 			cancelled = true;
 			window.clearInterval(timer);
 		};
-	}, [isStreaming, status?.phase]);
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (frameUrlRef.current) {
+				URL.revokeObjectURL(frameUrlRef.current);
+			}
+		};
+	}, []);
 
 	async function retryBootstrap() {
 		setIsRetrying(true);
@@ -82,9 +142,30 @@ function Home() {
 
 	const phaseCopy = getPhaseCopy(status);
 	const canStream = status?.phase === "ready";
-	const frameSrc = frame
-		? `data:${frame.mimeType};base64,${frame.base64}`
-		: undefined;
+	const isUiautomator2Source = previewSource === "uiautomator2";
+
+	function selectPreviewSource(source: PreviewSource) {
+		setPreviewSource(source);
+		setIsStreaming(false);
+		setStreamError(null);
+	}
+
+	async function toggleScrcpyPreview() {
+		setIsScrcpyBusy(true);
+		try {
+			setScrcpyStatus(
+				scrcpyStatus?.running
+					? await window.environment.stopScrcpyPreview()
+					: await window.environment.startScrcpyPreview(),
+			);
+		} catch (error) {
+			setStreamError(
+				error instanceof Error ? error.message : "scrcpy 预览启动失败。",
+			);
+		} finally {
+			setIsScrcpyBusy(false);
+		}
+	}
 
 	return (
 		<div className="min-h-screen bg-slate-950 p-6 text-slate-100">
@@ -146,54 +227,116 @@ function Home() {
 					<div className="flex flex-wrap items-start justify-between gap-4">
 						<div className="space-y-2">
 							<span className="inline-flex rounded-full bg-violet-500/15 px-3 py-1 text-sm text-violet-300">
-								实时截图流
+								实时预览
 							</span>
 							<h2 className="text-lg font-semibold">模拟器实时画面</h2>
 							<p className="text-sm text-slate-400">
-								环境 ready 后，每 10ms 从 native 层抓取一帧 PNG 截图并显示。
+								scrcpy 用于低延迟预览；uiautomator2
+								保留给自动化识别，并按上一帧完成后请求下一帧。
 							</p>
 						</div>
 
-						<button
-							type="button"
-							className="rounded-lg bg-violet-500 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
-							disabled={!canStream}
-							onClick={() => setIsStreaming((current) => !current)}
-						>
-							{isStreaming ? "停止截图流" : "开始截图流"}
-						</button>
+						<div className="flex flex-wrap gap-2">
+							<button
+								type="button"
+								className={`rounded-lg px-4 py-2 text-sm font-medium ${previewSource === "scrcpy" ? "bg-violet-500 text-white" : "bg-slate-800 text-slate-300"}`}
+								onClick={() => selectPreviewSource("scrcpy")}
+							>
+								scrcpy
+							</button>
+							<button
+								type="button"
+								className={`rounded-lg px-4 py-2 text-sm font-medium ${previewSource === "uiautomator2" ? "bg-violet-500 text-white" : "bg-slate-800 text-slate-300"}`}
+								onClick={() => selectPreviewSource("uiautomator2")}
+							>
+								uiautomator2
+							</button>
+							<button
+								type="button"
+								className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400"
+								disabled={!canStream || isScrcpyBusy}
+								onClick={
+									isUiautomator2Source
+										? () => setIsStreaming((current) => !current)
+										: toggleScrcpyPreview
+								}
+							>
+								{isUiautomator2Source
+									? isStreaming
+										? "停止截图流"
+										: "开始截图流"
+									: scrcpyStatus?.running
+										? "停止 scrcpy"
+										: "启动 scrcpy"}
+							</button>
+						</div>
 					</div>
 
 					<div className="mt-5 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950">
-						{frameSrc ? (
+						{isUiautomator2Source && frameUrl ? (
 							<img
 								alt="Android device live screenshot"
 								className="mx-auto max-h-[620px] w-full object-contain"
-								src={frameSrc}
+								src={frameUrl}
 							/>
+						) : previewSource === "scrcpy" ? (
+							<div className="flex min-h-80 items-center justify-center p-8 text-center text-slate-400">
+								<div className="max-w-lg space-y-3">
+									<p>
+										scrcpy 会打开独立低延迟预览窗口；当前 Electron
+										面板负责启动、停止和查看状态。
+									</p>
+									<p className="text-xs text-slate-500">
+										后续如需嵌入到此区域，可接入 @yume-chan/scrcpy + WebCodecs
+										canvas 解码。
+									</p>
+								</div>
+							</div>
 						) : (
 							<div className="flex min-h-80 items-center justify-center p-8 text-center text-slate-500">
 								{canStream
-									? "点击“开始截图流”查看模拟器实时画面。"
+									? "点击“开始截图流”查看 uiautomator2 截图效果。"
 									: "等待 ADB/ATX 环境 ready 后可开启截图流。"}
 							</div>
 						)}
 					</div>
 
-					<div className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
+					<div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
 						<StatusItem
-							label="截图状态"
-							value={isStreaming ? "运行中" : "已停止"}
+							label="预览来源"
+							value={previewSource === "scrcpy" ? "scrcpy" : "uiautomator2"}
+						/>
+						<StatusItem
+							label="预览状态"
+							value={
+								previewSource === "scrcpy"
+									? scrcpyStatus?.running
+										? "运行中"
+										: "已停止"
+									: isStreaming
+										? "运行中"
+										: "已停止"
+							}
 						/>
 						<StatusItem
 							label="截图设备"
 							value={frame?.serial ?? status?.serial ?? "-"}
 						/>
 						<StatusItem
+							label="FPS"
+							value={isUiautomator2Source ? String(fps) : "scrcpy 原生"}
+						/>
+						<StatusItem
 							label="最新帧时间"
 							value={frame ? new Date(frame.capturedAt).toLocaleString() : "-"}
 						/>
 					</div>
+
+					{previewSource === "scrcpy" && scrcpyStatus ? (
+						<div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-500/10 p-4 text-sm text-violet-100">
+							{scrcpyStatus.message}
+						</div>
+					) : null}
 
 					{streamError ? (
 						<div className="mt-4 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-100">

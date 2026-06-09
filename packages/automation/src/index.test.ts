@@ -56,7 +56,7 @@ describe("DeviceBootstrapService", () => {
 		await expect(service.captureScreenshot()).resolves.toMatchObject({
 			serial: "emulator-5554",
 			mimeType: "image/jpeg",
-			base64: Buffer.from("jpeg-frame").toString("base64"),
+			data: Buffer.from("jpeg-frame"),
 		});
 	});
 

@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { createConnection, createServer } from "node:net";
 import { join } from "node:path";
 import type { App } from "electron";
@@ -29,11 +29,17 @@ export class RendererServerManager {
 
 	async getRendererUrl() {
 		if (process.env.ELECTRON_RENDERER_URL) {
+			console.log(
+				"Using Vite renderer URL:",
+				process.env.ELECTRON_RENDERER_URL,
+			);
 			return process.env.ELECTRON_RENDERER_URL;
 		}
 
 		if (!this.#app.isPackaged) {
-			return "http://localhost:3000";
+			throw new Error(
+				"Missing ELECTRON_RENDERER_URL in development. Start desktop with `pnpm --filter desktop dev` so Electron loads the active Vite dev server instead of a stale localhost:3000 process.",
+			);
 		}
 
 		return this.#startPackagedRendererServer();
@@ -54,17 +60,21 @@ export class RendererServerManager {
 		const port = await getAvailablePort();
 		const url = `http://${RENDERER_HOST}:${port}`;
 
-		this.#serverProcess = spawn(process.execPath, [this.#getRendererServerEntry()], {
-			stdio: "inherit",
-			env: {
-				...process.env,
-				// Run the bundled Electron binary as Node to execute Nitro's server entry.
-				// 将打包后的 Electron 二进制作为 Node 运行，用来执行 Nitro server 入口。
-				ELECTRON_RUN_AS_NODE: "1",
-				HOST: RENDERER_HOST,
-				PORT: String(port),
+		this.#serverProcess = spawn(
+			process.execPath,
+			[this.#getRendererServerEntry()],
+			{
+				stdio: "inherit",
+				env: {
+					...process.env,
+					// Run the bundled Electron binary as Node to execute Nitro's server entry.
+					// 将打包后的 Electron 二进制作为 Node 运行，用来执行 Nitro server 入口。
+					ELECTRON_RUN_AS_NODE: "1",
+					HOST: RENDERER_HOST,
+					PORT: String(port),
+				},
 			},
-		});
+		);
 
 		await waitForPort(port);
 
@@ -110,7 +120,9 @@ function waitForPort(port: number) {
 
 			socket.once("error", () => {
 				if (Date.now() - startedAt > RENDERER_READY_TIMEOUT_MS) {
-					reject(new Error(`Timed out waiting for renderer server on port ${port}.`));
+					reject(
+						new Error(`Timed out waiting for renderer server on port ${port}.`),
+					);
 					return;
 				}
 

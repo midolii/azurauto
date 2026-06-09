@@ -17,15 +17,27 @@ export type EnvironmentApi = {
 	getBootstrapStatus(): Promise<IpcResult<"environment:getBootstrapStatus">>;
 	runBootstrap(): Promise<IpcResult<"environment:runBootstrap">>;
 	captureScreenshot(): Promise<IpcResult<"environment:captureScreenshot">>;
+	startScrcpyPreview(): Promise<IpcResult<"environment:startScrcpyPreview">>;
+	stopScrcpyPreview(): Promise<IpcResult<"environment:stopScrcpyPreview">>;
+	getScrcpyPreviewStatus(): Promise<
+		IpcResult<"environment:getScrcpyPreviewStatus">
+	>;
 };
 
 const environment: EnvironmentApi = {
 	getBootstrapStatus: () => invoke(ipcChannels.environmentGetBootstrapStatus),
 	runBootstrap: () => invoke(ipcChannels.environmentRunBootstrap),
 	captureScreenshot: () => invoke(ipcChannels.environmentCaptureScreenshot),
+	startScrcpyPreview: () => invoke(ipcChannels.environmentStartScrcpyPreview),
+	stopScrcpyPreview: () => invoke(ipcChannels.environmentStopScrcpyPreview),
+	getScrcpyPreviewStatus: () =>
+		invoke(ipcChannels.environmentGetScrcpyPreviewStatus),
 };
 
 /**
- * 正式 preload 只暴露环境检查 API，避免把测试用 ADB 操作能力泄露给渲染进程。
+ * 注册环境与预览相关 native bridge。
+ * 后续新增其他领域 API 时，新增独立 preload 模块并在 index.ts 中统一调用注册函数。
  */
-contextBridge.exposeInMainWorld("environment", environment);
+export function registerEnvironmentPreload() {
+	contextBridge.exposeInMainWorld("environment", environment);
+}
