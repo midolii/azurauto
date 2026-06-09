@@ -1,15 +1,21 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { AdbClient } from "@azurauto/adb";
 import {
 	type AutomationLogEntry,
- 	Uiautomator2ScreenshotSource,
- 	createDefaultAtxInstallStrategy,
- 	setAutomationLogger,
+	Uiautomator2ScreenshotSource,
+	createDefaultAtxInstallStrategy,
+	setAutomationLogger,
 } from "@azurauto/automation";
 import { DeviceBootstrapService } from "@azurauto/automation";
-import { app, BrowserWindow, Menu, type MenuItemConstructorOptions } from "electron";
+import {
+	app,
+	BrowserWindow,
+	Menu,
+	nativeImage,
+	type MenuItemConstructorOptions,
+} from "electron";
 import { cleanupIpcResources, registerIpcHandlers } from "./ipc/handlers/index.ts";
 import { ResourcePreparationService } from "./utils/resource-preparation.ts";
 import { resolveAndroidResources } from "./utils/android-resources.ts";
@@ -24,9 +30,12 @@ const AZURAUTO_ADB_SERVER_PORT = Number(
 );
 
 app.setName(APP_NAME);
+app.setAboutPanelOptions({
+	applicationName: APP_NAME,
+});
 
-if (app.isPackaged) {
-	Menu.setApplicationMenu(createPackagedApplicationMenu());
+if (app.isPackaged || process.platform === "darwin") {
+	Menu.setApplicationMenu(createApplicationMenu());
 }
 if (process.platform === "win32") {
 	app.setAppUserModelId(APP_ID);
@@ -73,6 +82,11 @@ async function createMainWindow() {
 			void prewarmAdbDeviceList(adb);
 		}
 	});
+	const windowIcon = createWindowIcon();
+	const dockIcon = createDevDockIcon();
+	if (process.platform === "darwin" && !dockIcon.isEmpty()) {
+		app.dock?.setIcon(dockIcon);
+	}
 
 	mainWindow = new BrowserWindow({
 		title: APP_NAME,
@@ -80,7 +94,8 @@ async function createMainWindow() {
 		height: 720,
 		minWidth: 1024,
 		minHeight: 640,
-		backgroundColor: "#020617",
+		backgroundColor: "#f8fbff",
+		icon: windowIcon.isEmpty() ? undefined : windowIcon,
 		webPreferences: {
 			// Electron 加载的是 preload TS 源码打包后的 CommonJS 产物。
 			preload: join(__dirname, "preload/dist/index.cjs"),
@@ -108,6 +123,28 @@ async function createMainWindow() {
 	mainWindow.loadURL(rendererUrl).catch((error) => {
 		console.error("Failed to load renderer:", error);
 	});
+}
+
+function createWindowIcon() {
+	return createPublicIcon("icon.png");
+}
+
+function createDevDockIcon() {
+	if (app.isPackaged) {
+		return nativeImage.createEmpty();
+	}
+
+	const icon = createPublicIcon("icon-dev.png");
+
+	return icon.isEmpty() ? createWindowIcon() : icon;
+}
+
+function createPublicIcon(fileName: string) {
+	const iconPath = join(__dirname, "..", "public", fileName);
+
+	return existsSync(iconPath)
+		? nativeImage.createFromPath(iconPath)
+		: nativeImage.createEmpty();
 }
 
 async function prewarmAdbDeviceList(adb: AdbClient) {
@@ -156,13 +193,17 @@ function isBlockedShortcut(input: Electron.Input) {
 	);
 }
 
-function createPackagedApplicationMenu() {
+function createApplicationMenu() {
 	const template: MenuItemConstructorOptions[] = [
 		...(process.platform === "darwin"
 			? [
 					{
 						label: APP_NAME,
-						submenu: [{ role: "quit" as const }],
+						submenu: [
+							{ role: "about" as const, label: `About ${APP_NAME}` },
+							{ type: "separator" as const },
+							{ role: "quit" as const, label: `Quit ${APP_NAME}` },
+						],
 					},
 				]
 			: []),
@@ -178,6 +219,19 @@ function createPackagedApplicationMenu() {
 				{ role: "selectAll" },
 			],
 		},
+		...(!app.isPackaged
+			? [
+					{
+						label: "View",
+						submenu: [
+							{ role: "reload" as const },
+							{ role: "forceReload" as const },
+							{ type: "separator" as const },
+							{ role: "toggleDevTools" as const },
+						],
+					},
+				]
+			: []),
 	];
 
 	return Menu.buildFromTemplate(template);

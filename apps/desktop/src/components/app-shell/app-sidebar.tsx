@@ -105,9 +105,12 @@ export function AppSidebar() {
 		<Sidebar className="border-white/60 bg-white/74 shadow-[0_24px_60px_rgba(15,55,66,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/82">
 			<SidebarHeader>
 				<div className="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/70 p-3 dark:border-white/10 dark:bg-white/5">
-					<div
+					<img
+						src="/icon.png"
+						srcSet="/icon.png 1x, /icon-source.png 2x"
+						alt="AzurAuto"
 						aria-hidden="true"
-						className="size-11 shrink-0 animate-pulse rounded-2xl bg-linear-to-br from-cyan-200 via-white to-emerald-200 ring-1 ring-cyan-600/10 dark:from-cyan-500/30 dark:via-white/10 dark:to-emerald-500/20"
+						className="size-11 shrink-0 rounded-2xl object-cover shadow-sm ring-1 ring-cyan-600/10"
 					/>
 					<div className="min-w-0">
 						<p className="truncate font-bold text-slate-950 text-sm dark:text-slate-50">

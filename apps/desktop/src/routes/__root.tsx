@@ -5,6 +5,7 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "sonner";
+import { getDocumentHead } from "../config/document-head";
 import "../styles.css";
 
 interface MyRouterContext {
@@ -12,20 +13,7 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-	head: () => ({
-		meta: [
-			{
-				charSet: "utf-8",
-			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1",
-			},
-			{
-				title: "azurauto",
-			},
-		],
-	}),
+	head: getDocumentHead,
 	shellComponent: RootDocument,
 	notFoundComponent: () => <div>Not Found</div>,
 });

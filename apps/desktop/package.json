@@ -26,7 +26,8 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check"
+    "check": "biome check",
+    "generate:icons": "node ./scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@azurauto/adb": "workspace:*",
@@ -73,7 +74,9 @@
     "electron-builder": "^26.8.1",
     "esbuild": "^0.28.0",
     "extract-zip": "^2.0.1",
+    "icon-gen": "^5.0.0",
     "jsdom": "^29.1.1",
+    "sharp": "^0.33.5",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
     "vite": "^8.0.16",
@@ -84,8 +87,10 @@
     "appId": "net.midolii.azurauto",
     "productName": "azurauto",
     "executableName": "azurauto",
+    "icon": "public/icon",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "public"
     },
     "files": [
       "electron/**/*",
@@ -103,6 +108,7 @@
     ],
     "mac": {
       "identity": null,
+      "icon": "public/icon.icns",
       "extendInfo": {
         "CFBundleName": "azurauto",
         "CFBundleDisplayName": "azurauto"
@@ -113,11 +119,13 @@
       ]
     },
     "win": {
+      "icon": "public/icon.ico",
       "target": [
         "nsis"
       ]
     },
     "linux": {
+      "icon": "public/icon.png",
       "target": [
         "AppImage"
       ]

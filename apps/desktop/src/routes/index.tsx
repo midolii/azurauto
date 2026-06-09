@@ -42,7 +42,7 @@ function Home() {
 		resourceStatus.phase === "downloading";
 
 	return (
-		<div className="min-h-screen text-slate-100">
+		<div className="min-h-screen text-slate-950">
 			<AnimatePresence initial={false}>
 				{shouldShowStartupLoading ? (
 					<StartupLoadingScreen key="startup-loading" status={resourceStatus} />
