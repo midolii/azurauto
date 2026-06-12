@@ -1,5 +1,6 @@
 import type { BootstrapStatus, ScreenshotFrame } from "@azurauto/automation";
 import { useEffect, useRef, useState } from "react";
+import { desktopPlatform, type PlatformCapability } from "#/platform/index.ts";
 import type { PreviewSource } from "../utils/options";
 
 export function useUiautomator2Preview({
@@ -19,6 +20,10 @@ export function useUiautomator2Preview({
 }) {
 	const [frame, setFrame] = useState<ScreenshotFrame | null>(null);
 	const [frameUrl, setFrameUrl] = useState<string | null>(null);
+	const [screenshotCapability, setScreenshotCapability] =
+		useState<PlatformCapability>(
+			() => desktopPlatform.getCapabilities().screenshot,
+		);
 	const frameUrlRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -34,12 +39,23 @@ export function useUiautomator2Preview({
 		let cancelled = false;
 		let frames = 0;
 		let fpsStartedAt = performance.now();
+		const nextScreenshotCapability =
+			desktopPlatform.getCapabilities().screenshot;
+		setScreenshotCapability(nextScreenshotCapability);
+
+		if (nextScreenshotCapability.status !== "available") {
+			onError(nextScreenshotCapability.message);
+			onStop();
+			onFps(0);
+			return;
+		}
 
 		async function captureLoop() {
 			// 不使用 setInterval：上一帧完成并渲染后，立即请求下一帧，避免请求堆积。
 			while (!cancelled) {
 				try {
-					const nextFrame = await window.environment.captureScreenshot();
+					const nextFrame =
+						await desktopPlatform.environment.captureScreenshot();
 					if (!cancelled) {
 						setFrame(nextFrame);
 						const nextUrl = URL.createObjectURL(
@@ -92,5 +108,5 @@ export function useUiautomator2Preview({
 		};
 	}, []);
 
-	return { frame, frameUrl };
+	return { frame, frameUrl, screenshotCapability };
 }

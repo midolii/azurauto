@@ -8,13 +8,14 @@ import {
 
 import { PageFrame } from "#/components/app-shell/page-frame.tsx";
 import { Button } from "#/components/ui/button.tsx";
+import { desktopPlatform } from "#/platform/index.ts";
 import { desktopStore, useDesktopStore } from "#/stores/desktop-store.ts";
 
 export function TaskExecutionPage() {
 	const logs = useDesktopStore((state) => state.logs);
 
 	async function clearLogs() {
-		desktopStore.setLogs(await window.logger.clearEntries());
+		desktopStore.setLogs(await desktopPlatform.logger.clearEntries());
 	}
 
 	return (

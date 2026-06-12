@@ -36,7 +36,7 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 
 	const isUiautomatorStreaming =
 		runtime.screenshotCaptureRunning && status?.phase === "ready";
-	const { frame, frameUrl } = useUiautomator2Preview({
+	const { frame, frameUrl, screenshotCapability } = useUiautomator2Preview({
 		previewSource: "uiautomator2",
 		isStreaming: isUiautomatorStreaming,
 		status,
@@ -49,6 +49,14 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 		onFps: handleScrcpyFps,
 		onError: handleError,
 	});
+	const isScreenshotUnavailable = screenshotCapability.status !== "available";
+	const isScrcpyUnavailable =
+		scrcpy.scrcpyCapability.status !== "available" ||
+		scrcpy.videoDecoderCapability.status !== "available";
+	const scrcpyUnavailableMessage =
+		scrcpy.scrcpyCapability.status !== "available"
+			? scrcpy.scrcpyCapability.message
+			: scrcpy.videoDecoderCapability.message;
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -72,9 +80,11 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 						/>
 					) : (
 						<div className="flex h-full items-center justify-center p-8 text-center text-slate-500">
-							{runtime.screenshotCaptureRunning
-								? "正在等待 uiautomator 截图帧..."
-								: "点击侧边栏顶部启动按钮后，这里会自动显示 uiautomator 实时截图。"}
+							{isScreenshotUnavailable
+								? screenshotCapability.message
+								: runtime.screenshotCaptureRunning
+									? "正在等待 uiautomator 截图帧..."
+									: "点击侧边栏顶部启动按钮后，这里会自动显示 uiautomator 实时截图。"}
 						</div>
 					)}
 				</div>
@@ -89,6 +99,10 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 						value={frame?.serial ?? status?.serial ?? "-"}
 					/>
 					<StatusItem label="实时 FPS" value={String(uiautomatorFps)} />
+					<StatusItem
+						label="截图能力"
+						value={getCapabilityLabel(screenshotCapability.status)}
+					/>
 					<StatusItem
 						label="最新帧时间"
 						value={frame ? new Date(frame.capturedAt).toLocaleString() : "-"}
@@ -114,7 +128,11 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 						<div className="flex items-center gap-2 text-sm">
 							<span className="text-slate-500">FPS</span>
 							<Select
-								disabled={scrcpy.scrcpyStatus?.running || scrcpy.isScrcpyBusy}
+								disabled={
+									isScrcpyUnavailable ||
+									scrcpy.scrcpyStatus?.running ||
+									scrcpy.isScrcpyBusy
+								}
 								value={String(scrcpy.scrcpyMaxFps)}
 								onValueChange={(value) => scrcpy.setScrcpyMaxFps(Number(value))}
 							>
@@ -133,7 +151,11 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 						<div className="flex items-center gap-2 text-sm">
 							<span className="text-slate-500">分辨率</span>
 							<Select
-								disabled={scrcpy.scrcpyStatus?.running || scrcpy.isScrcpyBusy}
+								disabled={
+									isScrcpyUnavailable ||
+									scrcpy.scrcpyStatus?.running ||
+									scrcpy.isScrcpyBusy
+								}
 								value={String(scrcpy.scrcpyMaxSize)}
 								onValueChange={(value) =>
 									scrcpy.setScrcpyMaxSize(Number(value))
@@ -154,7 +176,11 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 						<Button
 							type="button"
 							className="rounded-lg bg-sky-600 px-4 py-2 text-white hover:bg-sky-700 disabled:bg-slate-200 disabled:text-slate-400"
-							disabled={status?.phase !== "ready" || scrcpy.isScrcpyBusy}
+							disabled={
+								isScrcpyUnavailable ||
+								status?.phase !== "ready" ||
+								scrcpy.isScrcpyBusy
+							}
 							onClick={scrcpy.toggleScrcpyPreview}
 						>
 							{scrcpy.scrcpyStatus?.running ? "停止 scrcpy" : "启动 scrcpy"}
@@ -170,9 +196,11 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 						/>
 						{scrcpy.isScrcpyCanvasReady ? null : (
 							<div className="pointer-events-none absolute inset-0 flex items-center justify-center p-8 text-center text-slate-500">
-								{scrcpy.scrcpyStatus?.running
-									? "正在等待 scrcpy 视频帧..."
-									: "点击“启动 scrcpy”后，画面会通过 @yume-chan/scrcpy + WebCodecs 内嵌到此区域。"}
+								{isScrcpyUnavailable
+									? scrcpyUnavailableMessage
+									: scrcpy.scrcpyStatus?.running
+										? "正在等待 scrcpy 视频帧..."
+										: "点击“启动 scrcpy”后，画面会通过项目自有 scrcpy 视频协议 + WebCodecs 内嵌到此区域。"}
 							</div>
 						)}
 					</div>
@@ -189,10 +217,20 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 					/>
 					<StatusItem label="实时 FPS" value={String(scrcpyFps)} />
 					<StatusItem
+						label="预览能力"
+						value={getCapabilityLabel(scrcpy.scrcpyCapability.status)}
+					/>
+					<StatusItem
 						label="scrcpy 配置"
 						value={`${scrcpy.scrcpyMaxFps} FPS / ${scrcpy.scrcpyMaxSize === 0 ? "原始" : `${scrcpy.scrcpyMaxSize}p`}`}
 					/>
 				</div>
+
+				{isScrcpyUnavailable ? (
+					<div className="mt-4 border-amber-500 border-l-2 bg-amber-50 p-4 text-amber-800 text-sm">
+						{scrcpyUnavailableMessage}
+					</div>
+				) : null}
 
 				{scrcpy.scrcpyStatus ? (
 					<div className="mt-4 border-violet-500 border-l-2 bg-violet-50 p-4 text-sm text-violet-800">
@@ -208,4 +246,10 @@ export function PreviewSection({ status }: { status: BootstrapStatus | null }) {
 			) : null}
 		</div>
 	);
+}
+
+function getCapabilityLabel(status: "available" | "unavailable" | "degraded") {
+	if (status === "available") return "可用";
+	if (status === "degraded") return "降级";
+	return "不可用";
 }

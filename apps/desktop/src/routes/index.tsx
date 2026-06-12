@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { DesktopAppShell } from "../components/app-shell/desktop-app-shell";
 import { StartupLoadingScreen } from "../components/home/startup-loading-screen";
 import { useEnvironmentBootstrap } from "../hooks/use-environment-bootstrap";
+import { desktopPlatform } from "../platform/index.ts";
 import { type DesktopPage, desktopStore } from "../stores/desktop-store";
 import { DebugPage } from "./~pages/debug-page";
 import { HomePage } from "./~pages/home-page";
@@ -64,13 +65,13 @@ function useLoggerSubscription() {
 	useEffect(() => {
 		let cancelled = false;
 
-		void window.logger.getEntries().then((entries) => {
+		void desktopPlatform.logger.getEntries().then((entries) => {
 			if (!cancelled) {
 				desktopStore.setLogs(entries);
 			}
 		});
 
-		const unsubscribe = window.logger.onEntry((entry) => {
+		const unsubscribe = desktopPlatform.logger.onEntry((entry) => {
 			desktopStore.appendLog(entry);
 		});
 

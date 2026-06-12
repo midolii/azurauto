@@ -29,9 +29,9 @@ export function StartupLoadingScreen({
 					正在准备本地资源
 				</h1>
 				<p className="mt-3 text-slate-600 text-sm leading-7">
-					正在检查脚本运行需要的本地资源；此阶段不会自动连接 ADB 设备。
+					正在检查脚本运行需要的本地资源
 				</p>
-				<div className="mt-6 rounded-[0.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-left">
+				<div className="mt-6 rounded-[0.5rem] border border-slate-200 bg-slate-50 px-4 py-3 text-center">
 					<p className="font-mono text-[0.68rem] text-slate-500 uppercase tracking-[0.14em]">
 						Resource status
 					</p>

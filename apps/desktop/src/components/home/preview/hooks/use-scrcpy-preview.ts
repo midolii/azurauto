@@ -1,14 +1,16 @@
-import type {
-	ScrcpyMediaStreamPacket,
-	ScrcpyVideoCodecId,
-} from "@yume-chan/scrcpy";
-import {
-	BitmapVideoFrameRenderer,
-	WebCodecsVideoDecoder,
-	WebGLVideoFrameRenderer,
-} from "@yume-chan/scrcpy-decoder-webcodecs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ScrcpyPreviewStatus } from "../../../../../electron/ipc/contract/index.ts";
+import { desktopPlatform, type PlatformCapability } from "#/platform/index.ts";
+import {
+	createScrcpyRenderer,
+	createScrcpyVideoDecoder,
+	getScrcpyPacketWriter,
+	getScrcpyVideoDecoderCapability,
+	type ScrcpyVideoDecoder,
+} from "#/platform/scrcpy-video.ts";
+import type {
+	ScrcpyPreviewStatus,
+	ScrcpyVideoPacket,
+} from "../../../../../electron/ipc/contract/index.ts";
 import type { PreviewSource } from "../utils/options";
 
 export function useScrcpyPreview({
@@ -27,10 +29,20 @@ export function useScrcpyPreview({
 	const [scrcpyMaxFps, setScrcpyMaxFps] = useState(60);
 	const [scrcpyMaxSize, setScrcpyMaxSize] = useState(1080);
 	const [isScrcpyCanvasReady, setIsScrcpyCanvasReady] = useState(false);
+	const [scrcpyCapability, setScrcpyCapability] = useState<PlatformCapability>(
+		() => desktopPlatform.getCapabilities().scrcpy,
+	);
+	const [videoDecoderCapability, setVideoDecoderCapability] =
+		useState<PlatformCapability>(() => getScrcpyVideoDecoderCapability());
 	const scrcpyCanvasHostRef = useRef<HTMLDivElement | null>(null);
-	const scrcpyDecoderRef = useRef<WebCodecsVideoDecoder | null>(null);
+	const scrcpyDecoderRef = useRef<ScrcpyVideoDecoder | null>(null);
 	const scrcpyWriterRef =
-		useRef<WritableStreamDefaultWriter<ScrcpyMediaStreamPacket> | null>(null);
+		useRef<WritableStreamDefaultWriter<ScrcpyVideoPacket> | null>(null);
+
+	const refreshCapabilities = useCallback(() => {
+		setScrcpyCapability(desktopPlatform.getCapabilities().scrcpy);
+		setVideoDecoderCapability(getScrcpyVideoDecoderCapability());
+	}, []);
 
 	const resetScrcpyDecoder = useCallback(async () => {
 		const writer = scrcpyWriterRef.current;
@@ -53,7 +65,8 @@ export function useScrcpyPreview({
 		let cancelled = false;
 
 		async function loadScrcpyStatus() {
-			const nextStatus = await window.scrcpy.getPreviewStatus();
+			refreshCapabilities();
+			const nextStatus = await desktopPlatform.scrcpy.getPreviewStatus();
 			if (!cancelled) {
 				setScrcpyStatus(nextStatus);
 			}
@@ -66,13 +79,17 @@ export function useScrcpyPreview({
 			cancelled = true;
 			window.clearInterval(timer);
 		};
-	}, []);
+	}, [refreshCapabilities]);
 
 	useEffect(() => {
+		if (desktopPlatform.getCapabilities().scrcpy.status !== "available") {
+			return;
+		}
+
 		let frames = 0;
 		let fpsStartedAt = performance.now();
 
-		const unsubscribe = window.scrcpy.onVideoEvent(async (event) => {
+		const unsubscribe = desktopPlatform.scrcpy.onVideoEvent(async (event) => {
 			try {
 				if (event.type === "metadata") {
 					const host = scrcpyCanvasHostRef.current;
@@ -83,37 +100,32 @@ export function useScrcpyPreview({
 					await resetScrcpyDecoder();
 					host.replaceChildren();
 
-					if (!WebCodecsVideoDecoder.isSupported) {
-						onError(
-							"当前 Electron WebContents 不支持 WebCodecs，无法内嵌 scrcpy。",
-						);
+					const nextDecoderCapability = getScrcpyVideoDecoderCapability();
+					setVideoDecoderCapability(nextDecoderCapability);
+					if (nextDecoderCapability.status !== "available") {
+						onError(nextDecoderCapability.message);
 						return;
 					}
 
-					const renderer = WebGLVideoFrameRenderer.isSupported
-						? new WebGLVideoFrameRenderer()
-						: new BitmapVideoFrameRenderer();
+					const renderer = createScrcpyRenderer();
 					renderer.setSize(event.metadata.width, event.metadata.height);
 					const canvas = renderer.canvas as HTMLCanvasElement;
 					canvas.className = "mx-auto h-full max-h-155 w-full object-contain";
 					host.appendChild(canvas);
 					setIsScrcpyCanvasReady(true);
 
-					const decoder = new WebCodecsVideoDecoder({
-						codec: event.metadata.codec as ScrcpyVideoCodecId,
+					const decoder = createScrcpyVideoDecoder({
+						codec: event.metadata.codec,
 						renderer,
-						hardwareAcceleration: "no-preference",
 					});
 					scrcpyDecoderRef.current = decoder;
-					scrcpyWriterRef.current = decoder.writable.getWriter();
+					scrcpyWriterRef.current = getScrcpyPacketWriter(decoder);
 					onError(null);
 					return;
 				}
 
 				if (event.type === "packet") {
-					await scrcpyWriterRef.current?.write(
-						event.packet as ScrcpyMediaStreamPacket,
-					);
+					await scrcpyWriterRef.current?.write(event.packet);
 					frames += 1;
 					const now = performance.now();
 					if (now - fpsStartedAt >= 1000) {
@@ -155,13 +167,32 @@ export function useScrcpyPreview({
 	async function toggleScrcpyPreview() {
 		setIsScrcpyBusy(true);
 		try {
+			const nextScrcpyCapability = desktopPlatform.getCapabilities().scrcpy;
+			setScrcpyCapability(nextScrcpyCapability);
+			const nextDecoderCapability = getScrcpyVideoDecoderCapability();
+			setVideoDecoderCapability(nextDecoderCapability);
+
+			if (nextScrcpyCapability.status !== "available") {
+				onError(nextScrcpyCapability.message);
+				setScrcpyStatus(await desktopPlatform.scrcpy.getPreviewStatus());
+				return;
+			}
+
+			if (
+				!scrcpyStatus?.running &&
+				nextDecoderCapability.status !== "available"
+			) {
+				onError(nextDecoderCapability.message);
+				return;
+			}
+
 			if (scrcpyStatus?.running) {
 				onFps(0);
 			}
 			setScrcpyStatus(
 				scrcpyStatus?.running
-					? await window.scrcpy.stopPreview()
-					: await window.scrcpy.startPreview({
+					? await desktopPlatform.scrcpy.stopPreview()
+					: await desktopPlatform.scrcpy.startPreview({
 							maxFps: scrcpyMaxFps,
 							maxSize: scrcpyMaxSize,
 						}),
@@ -181,6 +212,8 @@ export function useScrcpyPreview({
 		scrcpyMaxSize,
 		setScrcpyMaxSize,
 		isScrcpyCanvasReady,
+		scrcpyCapability,
+		videoDecoderCapability,
 		scrcpyCanvasHostRef,
 		toggleScrcpyPreview,
 	};

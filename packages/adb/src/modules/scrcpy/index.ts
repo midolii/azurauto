@@ -8,7 +8,6 @@ import { AdbServerNodeTcpConnector } from "@yume-chan/adb-server-node-tcp";
 import {
 	DefaultServerPath,
 	type ScrcpyMediaStreamPacket,
-	type ScrcpyVideoCodecId,
 } from "@yume-chan/scrcpy";
 import {
 	ReadableStream as YumeReadableStream,
@@ -20,13 +19,29 @@ const require = createRequire(import.meta.url);
 // scrcpy 子模块封装 @yume-chan 的 ADB/scrcpy 协议能力。
 // 它只返回视频 metadata 与 packet stream，不负责 Electron IPC 或 renderer 解码。
 
+export type EmbeddedScrcpyVideoCodecId =
+	| "h264"
+	| "h265"
+	| "av1"
+	| "vp8"
+	| "vp9"
+	| (string & {})
+	| (number & {});
+
 export type EmbeddedScrcpyVideoMetadata = {
-	codec: ScrcpyVideoCodecId;
+	codec: EmbeddedScrcpyVideoCodecId;
 	width: number;
 	height: number;
 };
 
-export type EmbeddedScrcpyVideoPacket = ScrcpyMediaStreamPacket;
+export type EmbeddedScrcpyVideoPacket = {
+	type?: string;
+	data?: Uint8Array;
+	pts?: number;
+	timestamp?: number;
+	keyframe?: boolean;
+	[key: string]: unknown;
+};
 
 export type EmbeddedScrcpySession = {
 	metadata: EmbeddedScrcpyVideoMetadata;
@@ -117,11 +132,13 @@ export class EmbeddedScrcpyClient {
 
 		return {
 			metadata: {
-				codec: video.metadata.codec,
+				codec: video.metadata.codec as unknown as EmbeddedScrcpyVideoCodecId,
 				width: video.width,
 				height: video.height,
 			},
-			stream: video.stream,
+			// 将 @yume-chan 的 packet stream 固定在 packages/adb 边界内，
+			// 向 Electron/renderer 只暴露项目自有的可替换 packet 形状。
+			stream: video.stream as unknown as YumeReadableStreamType<EmbeddedScrcpyVideoPacket>,
 		};
 	}
 

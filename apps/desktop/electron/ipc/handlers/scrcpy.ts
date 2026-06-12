@@ -11,7 +11,9 @@ import {
 	ipcChannels,
 	rendererEventChannels,
 	type ScrcpyPreviewConfig,
+	type ScrcpyVideoMetadata,
 	type ScrcpyVideoEvent,
+	type ScrcpyVideoPacket,
 } from "../contract/index.ts";
 import { handleIpc } from "./typed-handle.ts";
 
@@ -132,7 +134,7 @@ async function pumpScrcpyVideoStream(
 
 			sendScrcpyVideoEvent(webContents, {
 				type: "packet",
-				packet: result.value,
+				packet: toRendererScrcpyPacket(result.value),
 			});
 		}
 	} catch (error) {
@@ -173,13 +175,32 @@ function sendScrcpyMetadata(
 	webContents: WebContents,
 	metadata: EmbeddedScrcpyVideoMetadata,
 ) {
-	sendScrcpyVideoEvent(webContents, { type: "metadata", metadata });
+	sendScrcpyVideoEvent(webContents, {
+		type: "metadata",
+		metadata: toRendererScrcpyMetadata(metadata),
+	});
 }
 
 function sendScrcpyVideoEvent(webContents: WebContents, event: ScrcpyVideoEvent) {
 	if (!webContents.isDestroyed()) {
 		webContents.send(rendererEventChannels.scrcpyVideoEvent, event);
 	}
+}
+
+function toRendererScrcpyMetadata(
+	metadata: EmbeddedScrcpyVideoMetadata,
+): ScrcpyVideoMetadata {
+	return {
+		codec: metadata.codec,
+		width: metadata.width,
+		height: metadata.height,
+	};
+}
+
+function toRendererScrcpyPacket(
+	packet: EmbeddedScrcpyVideoPacket,
+): ScrcpyVideoPacket {
+	return packet as ScrcpyVideoPacket;
 }
 
 function formatError(error: unknown) {

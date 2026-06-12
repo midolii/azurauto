@@ -24,6 +24,7 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 } from "#/components/ui/sidebar.tsx";
+import { desktopPlatform } from "#/platform/index.ts";
 import {
 	type DesktopPage,
 	desktopStore,
@@ -61,7 +62,11 @@ export function AppSidebar() {
 		runtime.phase === "starting" || runtime.phase === "pausing";
 	const isRuntimeRunning = runtime.phase === "running";
 	const isRuntimeActive = isRuntimeRunning || runtime.phase === "starting";
-	const canStart = resourceStatus?.ready && !isRuntimeBusy;
+	const runtimeCapability = desktopPlatform.getCapabilities().runtimeControl;
+	const canStart =
+		runtimeCapability.status === "available" &&
+		resourceStatus?.ready &&
+		!isRuntimeBusy;
 	const canToggleRuntime = isRuntimeActive || canStart;
 	const RuntimeControlIcon = isRuntimeBusy
 		? LoaderCircle
@@ -76,6 +81,11 @@ export function AppSidebar() {
 			: "text-slate-500";
 
 	async function toggleRuntime() {
+		if (runtimeCapability.status !== "available") {
+			toast.error(runtimeCapability.message);
+			return;
+		}
+
 		if (!isRuntimeActive) {
 			desktopStore.setRuntime({
 				phase: "starting",
@@ -83,14 +93,16 @@ export function AppSidebar() {
 				screenshotCaptureRunning: false,
 				updatedAt: new Date().toISOString(),
 			});
-			const startPromise = window.runtime.start().then((nextRuntime) => {
-				desktopStore.setRuntime(nextRuntime);
-				if (nextRuntime.phase === "error") {
-					throw new Error(nextRuntime.message);
-				}
+			const startPromise = desktopPlatform.runtime
+				.start()
+				.then((nextRuntime) => {
+					desktopStore.setRuntime(nextRuntime);
+					if (nextRuntime.phase === "error") {
+						throw new Error(nextRuntime.message);
+					}
 
-				return nextRuntime;
-			});
+					return nextRuntime;
+				});
 
 			toast.promise(startPromise, {
 				loading: "脚本正在启动，请耐心等待",
@@ -103,7 +115,7 @@ export function AppSidebar() {
 			return;
 		}
 
-		desktopStore.setRuntime(await window.runtime.pause());
+		desktopStore.setRuntime(await desktopPlatform.runtime.pause());
 	}
 
 	return (

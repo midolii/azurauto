@@ -7,9 +7,9 @@ import type {
 
 declare global {
 	interface Window {
-		environment: EnvironmentApi;
-		logger: LoggerApi;
-		runtime: RuntimeApi;
-		scrcpy: ScrcpyApi;
+		environment?: EnvironmentApi;
+		logger?: LoggerApi;
+		runtime?: RuntimeApi;
+		scrcpy?: ScrcpyApi;
 	}
 }

@@ -1,8 +1,3 @@
-import type {
-	EmbeddedScrcpyVideoMetadata,
-	EmbeddedScrcpyVideoPacket,
-} from "@azurauto/adb";
-
 export type ScrcpyPreviewStatus = {
 	running: boolean;
 	serial?: string;
@@ -15,9 +10,29 @@ export type ScrcpyPreviewConfig = {
 	maxSize: number;
 };
 
-export type ScrcpyVideoMetadata = EmbeddedScrcpyVideoMetadata;
+export type ScrcpyVideoCodecId =
+	| "h264"
+	| "h265"
+	| "av1"
+	| "vp8"
+	| "vp9"
+	| (string & {})
+	| (number & {});
 
-export type ScrcpyVideoPacket = EmbeddedScrcpyVideoPacket;
+export type ScrcpyVideoMetadata = {
+	codec: ScrcpyVideoCodecId;
+	width: number;
+	height: number;
+};
+
+export type ScrcpyVideoPacket = {
+	type?: string;
+	data?: Uint8Array;
+	pts?: number;
+	timestamp?: number;
+	keyframe?: boolean;
+	[key: string]: unknown;
+};
 
 export type ScrcpyVideoEvent =
 	| {

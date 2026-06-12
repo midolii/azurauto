@@ -168,6 +168,25 @@ scrcpy 投屏能力挂载在独立作用域 `window.scrcpy`：
 
 当前不再保留测试用途的 `window.bot.tap`、`window.bot.swipe` 和 `window.bot.screenshot`。后续如果需要游戏截图、点击或滑动能力，应在自动化服务层设计稳定接口，再通过最小化 preload API 暴露给渲染层。
 
+### Platform adapter / Web 降级约束
+
+渲染层代码必须通过 `apps/desktop/src/platform` 访问 `window.environment`、`window.scrcpy`、`window.runtime` 和 `window.logger`。组件、hooks、routes 不应直接读取这些 preload 全局对象；这样普通 Web 环境、测试环境或 preload 部分缺失时，页面可以进入 native 不可用/降级状态，而不是因为 `window.*` 缺失直接崩溃。
+
+新增 native 能力时按以下顺序扩展：
+
+1. 在 `packages/adb`、`packages/automation` 或 Electron runtime 服务层定义项目自有接口。
+2. 通过最小化 IPC/preload API 暴露任务级或状态级方法。
+3. 在 `apps/desktop/src/platform` 增加能力状态、fallback 和操作入口。
+4. 渲染层只消费 platform adapter 返回的数据与方法。
+
+不要把 raw shell、第三方 SDK 对象、Rust FFI handle、Node stream 或临时测试方法直接暴露给 UI。
+
+### Rust / 其他 native 实现替换边界
+
+后续如果把 ADB、截图、scrcpy 或资源准备切换到 Rust，应优先替换 `packages/adb`、scrcpy adapter、截图源或 Electron main 侧 bridge 的内部实现。上层继续消费项目自有类型，例如设备列表、bootstrap 状态、截图 `Uint8Array`、scrcpy preview status 和 renderer-facing 视频事件。
+
+scrcpy 视频 metadata/packet/event 也必须在 native/scrcpy adapter 边界转换为项目自有的可序列化协议，避免渲染层依赖 `@yume-chan/*` 或未来 Rust 后端的内部类型。
+
 ## ADB/ATX 状态说明
 
 应用启动后会进入以下状态之一：

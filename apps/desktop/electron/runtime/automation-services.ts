@@ -16,6 +16,8 @@ export type AutomationServices = {
 
 // 自动化服务装配层：组装 ADB、设备 bootstrap、截图源和日志桥接。
 // DesktopRuntime 只关心这些服务的生命周期，不需要知道具体依赖如何创建。
+// 如果后续 ADB/截图切换到 Rust 或其他 native 后端，应在这里替换实现，
+// 保持 preload、platform adapter 和 UI 继续消费项目自有状态/数据契约。
 
 export function createAutomationServices(
 	resources: AndroidResources,
